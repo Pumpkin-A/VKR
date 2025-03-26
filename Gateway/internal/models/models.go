@@ -12,6 +12,7 @@ type (
 var (
 	CreatedPaymentStatus      PaymentStatus = "Created"
 	SuccessPaymentStatus      PaymentStatus = "Success"
+	FailedPaymentStatus       PaymentStatus = "Failed"
 	InProcessingPaymentStatus PaymentStatus = "InProcessing"
 	RussianRubleCurrency      Currency      = "RUB"
 )
@@ -23,14 +24,14 @@ type CreatePaymentRequest struct {
 }
 
 type Payment struct {
-	ID                   string               `json:"id"`
-	Status               PaymentStatus        `json:"status"`
-	Paid                 bool                 `json:"paid"`
-	Amount               amount               `json:"amount"`
-	AuthorizationDetails authorizationDetails `json:"authorization_details"`
-	CreatedAt            time.Time            `json:"created_at"`
-	Description          string               `json:"description"`
-	ExpiresAt            time.Time            `json:"expires_at"`
+	ID     string        `json:"id"`
+	Status PaymentStatus `json:"status"`
+	Paid   bool          `json:"paid"`
+	Amount amount        `json:"amount"`
+	// AuthorizationDetails authorizationDetails `json:"authorization_details"`
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	ExpiresAt   time.Time `json:"expires_at"`
 	// Metadata    struct {
 	// } `json:"metadata"`
 	PaymentMethod paymentMethod `json:"payment_method"`
@@ -46,7 +47,7 @@ type amount struct {
 }
 
 type authorizationDetails struct {
-	Rrn      string `json:"rrn"`
+	// Rrn      string `json:"rrn"`
 	AuthCode string `json:"auth_code"`
 	// ThreeDSecure struct {
 	// 	Applied bool `json:"applied"`
@@ -54,18 +55,19 @@ type authorizationDetails struct {
 }
 
 type paymentMethod struct {
-	Type  string `json:"type"`
-	ID    string `json:"id"`
-	Saved bool   `json:"saved"`
-	Card  card   `json:"card"`
-	Title string `json:"title"`
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	// Saved bool   `json:"saved"`
+	Card card `json:"card"`
+	// Title string `json:"title"`
 }
 
 type card struct {
-	First6      string `json:"first6"`
-	Last4       string `json:"last4"`
-	ExpiryMonth string `json:"expiry_month"`
-	ExpiryYear  string `json:"expiry_year"`
+	// First6      string `json:"first6"`
+	// Last4       string `json:"last4"`
+	Number      string `json:"number"`
+	ExpiryMonth int    `json:"expiry_month"`
+	ExpiryYear  int    `json:"expiry_year"`
 	CardType    string `json:"card_type"`
 	CardProduct struct {
 		Code string `json:"code"`
@@ -76,6 +78,6 @@ type card struct {
 }
 
 type recipient struct {
-	AccountID string `json:"account_id"`
-	GatewayID string `json:"gateway_id"`
+	AccountNumber string `json:"account_number"`
+	Title         string `json:"title"`
 }
