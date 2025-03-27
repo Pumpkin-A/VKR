@@ -7,14 +7,17 @@ import (
 type (
 	PaymentStatus string
 	Currency      string
+	PaymentType   string
 )
 
 var (
-	CreatedPaymentStatus      PaymentStatus = "Created"
-	SuccessPaymentStatus      PaymentStatus = "Success"
-	FailedPaymentStatus       PaymentStatus = "Failed"
-	InProcessingPaymentStatus PaymentStatus = "InProcessing"
+	CreatedPaymentStatus      PaymentStatus = "created"
+	SuccessPaymentStatus      PaymentStatus = "success"
+	FailedPaymentStatus       PaymentStatus = "failed"
+	InProcessingPaymentStatus PaymentStatus = "inProcessing"
 	RussianRubleCurrency      Currency      = "RUB"
+	SBPPaymentType            PaymentType   = "SBP"
+	CreditCardPaymentType     PaymentType   = "bank_card"
 )
 
 type CreatePaymentRequest struct {
@@ -24,7 +27,7 @@ type CreatePaymentRequest struct {
 }
 
 type Payment struct {
-	ID     string        `json:"id"`
+	UUID   string        `json:"id"`
 	Status PaymentStatus `json:"status"`
 	Paid   bool          `json:"paid"`
 	Amount amount        `json:"amount"`
@@ -58,11 +61,11 @@ type paymentMethod struct {
 	Type string `json:"type"`
 	ID   string `json:"id"`
 	// Saved bool   `json:"saved"`
-	Card card `json:"card"`
+	Card Card `json:"card"`
 	// Title string `json:"title"`
 }
 
-type card struct {
+type Card struct {
 	// First6      string `json:"first6"`
 	// Last4       string `json:"last4"`
 	Number      string `json:"number"`
@@ -70,7 +73,7 @@ type card struct {
 	ExpiryYear  int    `json:"expiry_year"`
 	CardType    string `json:"card_type"`
 	CardProduct struct {
-		Code string `json:"code"`
+		Code int    `json:"code"`
 		Name string `json:"name"`
 	} `json:"card_product"`
 	IssuerCountry string `json:"issuer_country"`

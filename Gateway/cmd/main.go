@@ -12,7 +12,8 @@ func main() {
 	// ctx := context.Background()
 	cfg := config.New()
 
-	db := db.New("db connection string")
+	db := db.New(cfg)
+	defer db.DB.Close()
 
 	pm := paymentmanager.New(db)
 

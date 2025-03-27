@@ -2,6 +2,7 @@ package paymentmanager
 
 import (
 	"context"
+	"fmt"
 	"log"
 	models "payment_gateway/internal/models"
 )
@@ -9,6 +10,7 @@ import (
 type DB interface {
 	AddPayment(models.Payment) error
 	GetPayment(id int) models.Payment
+	AddCardIfNotExist(c models.Card) error
 }
 
 type PaymentManager struct {
@@ -21,11 +23,20 @@ func New(db DB) *PaymentManager {
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error) {
 	payment := models.ConvertCreatePaymentRequestToPayment(requestData)
-	log.Printf("Добавление транзакции в бд, id: %s\n", payment.ID)
-	return payment.ID, nil
+	log.Printf("Добавление транзакции в бд, id: %s\n", payment.UUID)
+	err := pm.DB.AddCardIfNotExist(payment.PaymentMethod.Card)
+	fmt.Println(payment.PaymentMethod.Card.Number)
+	if err != nil {
+		return "", err
+	}
+	err = pm.DB.AddPayment(payment)
+	if err != nil {
+		return "", err
+	}
+	return payment.UUID, nil
 }
 
 func (pm *PaymentManager) GetPaymentInfo(ctx context.Context, id string) (models.Payment, error) {
 	log.Printf("Получение транзакции из бд, id: %s\n", id)
-	return models.Payment{ID: id}, nil
+	return models.Payment{UUID: id}, nil
 }

@@ -8,14 +8,14 @@ import (
 
 func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) Payment {
 	return Payment{
-		ID:     uuid.NewString(),
+		UUID:   uuid.NewString(),
 		Status: CreatedPaymentStatus,
 		Paid:   false,
 		Amount: req.Amount,
-		AuthorizationDetails: authorizationDetails{
-			Rrn:      "10000000000",
-			AuthCode: "000000",
-		},
+		// AuthorizationDetails: authorizationDetails{
+		// 	Rrn:      "10000000000",
+		// 	AuthCode: "000000",
+		// },
 		CreatedAt:     time.Now(),
 		Description:   "",
 		ExpiresAt:     time.Now().Add(time.Duration(time.Minute * 30)),
