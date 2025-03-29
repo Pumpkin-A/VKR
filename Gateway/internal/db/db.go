@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"payment_gateway/config"
@@ -66,6 +67,36 @@ func (db *PostgresDB) AddCardIfNotExist(c models.Card) error {
 	return nil
 }
 
-func (db *PostgresDB) GetPayment(id int) models.Payment {
-	return models.Payment{}
+func (db *PostgresDB) GetPayment(uuid string) (models.Payment, error) {
+	selectQuery := `select p.uuid, s.status, p.paid, p.amount, cu.title, p.created_at, p.expired_at,
+       p.description, pt.type, c.number, c.expiry_month, c.expiry_year, c.card_type,
+       c.code, c.name, c.issuer_country, i.issuer_name,
+       r.title, p.refundable, p.test, p.income from payment as p
+		join card as c on p.card_number = c.number
+		join payment_type as pt on p.paymnent_type_id = pt.id
+		join status as s on p.status_id = s.id
+		join currency as cu on p.currency_id = cu.id
+		join recepient as r on p.recepient_account_number = r.account_number
+		join issuer_name AS i ON c.issuer_name_id = i.id
+		where uuid = $1;`
+	row := db.DB.QueryRow(selectQuery, uuid)
+	if err := row.Err(); err != nil {
+		slog.Error("error with query row in GetPayment", "err", err.Error())
+		return models.Payment{}, err
+	}
+	log.Println(row)
+
+	p := models.Payment{}
+	err := row.Scan(&p.UUID, &p.Status, &p.Paid, &p.Amount.Value, &p.Amount.Currency, &p.CreatedAt, &p.ExpiresAt,
+		&p.Description, &p.PaymentMethod.Type, &p.PaymentMethod.Card.Number, &p.PaymentMethod.Card.ExpiryMonth,
+		&p.PaymentMethod.Card.ExpiryYear, &p.PaymentMethod.Card.CardType, &p.PaymentMethod.Card.CardProduct.Code,
+		&p.PaymentMethod.Card.CardProduct.Name, &p.PaymentMethod.Card.IssuerCountry, &p.PaymentMethod.Card.IssuerName,
+		&p.Recipient.Title, &p.Refundable, &p.Test, &p.IncomeAmount.Value)
+	if err != nil {
+		slog.Error("error with scan row in GetPayment", "err", err.Error())
+		return models.Payment{}, err
+	}
+	log.Println(p)
+
+	return p, nil
 }

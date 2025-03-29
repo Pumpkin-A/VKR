@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	models "payment_gateway/internal/models"
+
+	"github.com/google/uuid"
 )
 
 func HandleHello(w http.ResponseWriter, r *http.Request) {
@@ -15,9 +18,8 @@ func HandleHello(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleCreatePayment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("error"))
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -46,10 +48,39 @@ func (s *Server) HandleCreatePayment(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Body: No Body Supplied\n")
 	}
 
-	paymentID, err := s.PaymentManager.CreatePayment(context.Background(), paymentReq)
+	paymentUUID, err := s.PaymentManager.CreatePayment(context.Background(), paymentReq)
 	if err != nil {
 		log.Println("error with creating payment")
 	}
 
-	w.Write([]byte(paymentID + "success"))
+	w.Write([]byte(paymentUUID + "success"))
+}
+
+func (s *Server) HandleGetPayment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	paymentUUID := r.URL.Query().Get("paymentUUID")
+	if paymentUUID == "" || uuid.Validate(paymentUUID) != nil {
+		http.Error(w, "Invalid query parameter", http.StatusBadRequest)
+		return
+	}
+
+	payment, err := s.PaymentManager.GetPayment(context.Background(), paymentUUID)
+	if err != nil {
+		http.Error(w, "Error in business logic", http.StatusBadRequest)
+		return
+	}
+
+	jsonPayment, err := json.Marshal(payment)
+	if err != nil {
+		slog.Error("Error marshaling JSON:", err.Error())
+		http.Error(w, "Error in business logic", http.StatusBadRequest)
+		return
+	}
+
+	slog.Info("payment:", string(jsonPayment))
+	w.Write(jsonPayment)
 }

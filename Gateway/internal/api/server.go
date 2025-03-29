@@ -17,7 +17,7 @@ type Server struct {
 
 type PaymentManager interface {
 	CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error)
-	GetPaymentInfo(ctx context.Context, id string) (models.Payment, error)
+	GetPayment(ctx context.Context, uuid string) (models.Payment, error)
 }
 
 func New(cfg config.Config, pm PaymentManager) (*Server, error) {
@@ -38,6 +38,7 @@ func New(cfg config.Config, pm PaymentManager) (*Server, error) {
 func (s *Server) registerHandlers() {
 	s.Mux.HandleFunc("/", HandleHello)
 	s.Mux.HandleFunc("/payments", s.HandleCreatePayment)
+	s.Mux.HandleFunc("/getPayment", s.HandleGetPayment)
 }
 
 func (s *Server) RunHTTPServer() error {

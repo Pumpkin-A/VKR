@@ -9,7 +9,7 @@ import (
 
 type DB interface {
 	AddPayment(models.Payment) error
-	GetPayment(id int) models.Payment
+	GetPayment(uuid string) (models.Payment, error)
 	AddCardIfNotExist(c models.Card) error
 }
 
@@ -36,7 +36,12 @@ func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.
 	return payment.UUID, nil
 }
 
-func (pm *PaymentManager) GetPaymentInfo(ctx context.Context, id string) (models.Payment, error) {
-	log.Printf("Получение транзакции из бд, id: %s\n", id)
-	return models.Payment{UUID: id}, nil
+func (pm *PaymentManager) GetPayment(ctx context.Context, uuid string) (models.Payment, error) {
+	log.Printf("Получение транзакции из бд, id: %s\n", uuid)
+	payment, err := pm.DB.GetPayment(uuid)
+	if err != nil {
+		return models.Payment{}, err
+	}
+
+	return payment, nil
 }
