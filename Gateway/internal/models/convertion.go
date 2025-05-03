@@ -29,3 +29,11 @@ func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) Payment {
 		},
 	}
 }
+
+func ConvertCreatePaymentRequestToEvent(req CreatePaymentRequest) CreatePaymentEvent {
+	return CreatePaymentEvent{
+		Amount:        req.Amount,
+		PaymentMethod: req.PaymentMethod,
+		Recipient:     req.Recipient,
+	}
+}

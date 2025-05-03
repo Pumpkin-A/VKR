@@ -4,18 +4,18 @@ import (
 	"log"
 	"payment_gateway/config"
 	"payment_gateway/internal/api"
+	"payment_gateway/internal/broker"
 	paymentmanager "payment_gateway/internal/businessLogic"
-	"payment_gateway/internal/db"
 )
 
 func main() {
 	// ctx := context.Background()
 	cfg := config.New()
 
-	db := db.New(cfg)
-	defer db.DB.Close()
+	producer := broker.New(cfg.Kafka.BootstrapServers, cfg.Kafka.Topic)
+	defer producer.Close()
 
-	pm := paymentmanager.New(db)
+	pm := paymentmanager.New(producer)
 
 	s, err := api.New(cfg, pm)
 	if err != nil {

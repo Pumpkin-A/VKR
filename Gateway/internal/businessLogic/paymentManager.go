@@ -2,46 +2,55 @@ package paymentmanager
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
+	"log/slog"
 	models "payment_gateway/internal/models"
 )
 
-type DB interface {
-	AddPayment(models.Payment) error
-	GetPayment(uuid string) (models.Payment, error)
-	AddCardIfNotExist(c models.Card) error
+type Producer interface {
+	Write(ctx context.Context, key, value []byte) error
+	Close() error
 }
 
 type PaymentManager struct {
-	DB DB
+	Producer Producer
 }
 
-func New(db DB) *PaymentManager {
-	return &PaymentManager{DB: db}
+func New(producer Producer) *PaymentManager {
+	return &PaymentManager{
+		Producer: producer,
+	}
 }
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error) {
 	payment := models.ConvertCreatePaymentRequestToPayment(requestData)
-	log.Printf("Добавление транзакции в бд, id: %s\n", payment.UUID)
-	err := pm.DB.AddCardIfNotExist(payment.PaymentMethod.Card)
-	fmt.Println(payment.PaymentMethod.Card.Number)
+	// log.Printf("Добавление транзакции в бд, id: %s\n", payment.UUID)
+	// err := pm.DB.AddCardIfNotExist(payment.PaymentMethod.Card)
+	// fmt.Println(payment.PaymentMethod.Card.Number)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// err = pm.DB.AddPayment(payment)
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	paymentByte, err := json.Marshal(payment)
 	if err != nil {
-		return "", err
+		slog.Error("error with marshal payment with uuid", payment.UUID, err.Error())
 	}
-	err = pm.DB.AddPayment(payment)
-	if err != nil {
-		return "", err
-	}
+	pm.Producer.Write(ctx, []byte(payment.UUID), paymentByte)
+
 	return payment.UUID, nil
 }
 
 func (pm *PaymentManager) GetPayment(ctx context.Context, uuid string) (models.Payment, error) {
 	log.Printf("Получение транзакции из бд, id: %s\n", uuid)
-	payment, err := pm.DB.GetPayment(uuid)
-	if err != nil {
-		return models.Payment{}, err
-	}
+	// payment, err := pm.DB.GetPayment(uuid)
+	// if err != nil {
+	// 	return models.Payment{}, err
+	// }
 
-	return payment, nil
+	return models.Payment{}, nil
 }

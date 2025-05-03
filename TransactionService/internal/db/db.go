@@ -6,8 +6,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"payment_gateway/config"
-	models "payment_gateway/internal/models"
+	"transaction_service/config"
+	models "transaction_service/internal/models"
 
 	_ "github.com/lib/pq"
 )

@@ -20,21 +20,6 @@ var (
 	CreditCardPaymentType     PaymentType   = "bank_card"
 )
 
-type CreatePaymentRequest struct {
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
-}
-
-// type Event interface{}
-
-type CreatePaymentEvent struct {
-	// Event
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
-}
-
 type Payment struct {
 	UUID   string        `json:"id"`
 	Status PaymentStatus `json:"status"`
