@@ -17,7 +17,7 @@ type Server struct {
 
 type PaymentManager interface {
 	CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error)
-	GetPayment(ctx context.Context, uuid string) (models.Payment, error)
+	GetPayment(ctx context.Context, uuid string) (models.CreatePaymentEvent, error)
 }
 
 func New(cfg config.Config, pm PaymentManager) (*Server, error) {

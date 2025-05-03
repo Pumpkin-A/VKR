@@ -7,32 +7,35 @@ import (
 	"log/slog"
 
 	"transaction_service/internal/models"
-	pm "transaction_service/internal/paymentManager"
 
 	"github.com/segmentio/kafka-go"
 )
 
-type Consumer struct {
-	Reader *kafka.Reader
-	PM     *pm.PaymentManager
+type PaymentManager interface {
+	CreatePayment(ctx context.Context, payment models.Payment) (string, error)
 }
 
-func New(topic string, pm pm.PaymentManager) *Consumer {
-	c := &Consumer{
-		Reader: kafka.NewReader(kafka.ReaderConfig{
+type Consumer struct {
+	reader *kafka.Reader
+	pm     PaymentManager
+}
+
+func New(ctx context.Context, topic string, pm PaymentManager) *Consumer {
+	consumer := &Consumer{
+		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: []string{"localhost:9092"},
 			Topic:   topic,
 			// Partition: 0,
 			MaxBytes: 10e6, // 10MB
 		}),
-		PM: &pm,
+		pm: pm,
 	}
-	// c.Reader.SetOffset(42)
-	return c
+	go consumer.Read(ctx)
+	return consumer
 }
 
 func (c *Consumer) Close() error {
-	if err := c.Reader.Close(); err != nil {
+	if err := c.reader.Close(); err != nil {
 		slog.Error("failed to close reader:", "err", err.Error())
 		return err
 	}
@@ -40,20 +43,20 @@ func (c *Consumer) Close() error {
 }
 
 func (c *Consumer) Read(ctx context.Context) error {
-	fmt.Print("kkjk")
 	for {
-		m, err := c.Reader.ReadMessage(ctx)
+		m, err := c.reader.ReadMessage(ctx)
 		if err != nil {
 			slog.Error("error with reading from kafka:", "err", err.Error())
 			return err
 		}
 		fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
-		payment := models.Payment{}
+
+		var payment models.Payment
 		err = json.Unmarshal(m.Value, &payment)
 		if err != nil {
 			slog.Error("error with unmarshal msg:", "err", err.Error())
 		}
-		_, err = c.PM.CreatePayment(ctx, payment)
+		_, err = c.pm.CreatePayment(ctx, payment)
 		if err != nil {
 			slog.Error("error with createPaymnet:", "err", err.Error())
 		}

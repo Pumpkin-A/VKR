@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) Payment {
-	return Payment{
+func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) CreatePaymentEvent {
+	return CreatePaymentEvent{
 		UUID:   uuid.NewString(),
 		Status: CreatedPaymentStatus,
 		Paid:   false,

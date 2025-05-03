@@ -5,7 +5,7 @@ import (
 	"payment_gateway/config"
 	"payment_gateway/internal/api"
 	"payment_gateway/internal/broker"
-	paymentmanager "payment_gateway/internal/businessLogic"
+	paymentmanager "payment_gateway/internal/entity/paymentmanager"
 )
 
 func main() {

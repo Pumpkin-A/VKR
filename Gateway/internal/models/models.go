@@ -26,16 +26,7 @@ type CreatePaymentRequest struct {
 	Recipient     recipient     `json:"recipient"`
 }
 
-// type Event interface{}
-
 type CreatePaymentEvent struct {
-	// Event
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
-}
-
-type Payment struct {
 	UUID   string        `json:"id"`
 	Status PaymentStatus `json:"status"`
 	Paid   bool          `json:"paid"`

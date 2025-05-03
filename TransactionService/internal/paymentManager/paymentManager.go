@@ -35,6 +35,8 @@ func (pm *PaymentManager) CreatePayment(ctx context.Context, payment models.Paym
 		return "", err
 	}
 
+	// пишем событие другим
+
 	return payment.UUID, nil
 }
 

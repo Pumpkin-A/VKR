@@ -2,7 +2,9 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
+	"payment_gateway/internal/models"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -29,16 +31,21 @@ func (p *Producer) Close() error {
 	return nil
 }
 
-func (p *Producer) Write(ctx context.Context, key, value []byte) error {
-	err := p.Writer.WriteMessages(ctx,
+func (p *Producer) WriteCreatePaymentEvent(ctx context.Context, payment models.CreatePaymentEvent) error {
+	paymentByte, err := json.Marshal(payment)
+	if err != nil {
+		slog.Error("error with marshal payment with uuid", payment.UUID, err.Error())
+	}
+
+	err = p.Writer.WriteMessages(ctx,
 		kafka.Message{
-			Key:   key,
-			Value: value,
+			Key:   []byte(payment.UUID),
+			Value: paymentByte,
 		})
 	if err != nil {
 		slog.Error("failed to write message:", "err", err.Error())
 		return err
 	}
-	slog.Info("succesful writing message to kafka", "uuid:", string(key))
+	slog.Info("succesful writing message to kafka", "uuid:", payment.UUID)
 	return nil
 }
