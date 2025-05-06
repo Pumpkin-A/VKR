@@ -3,9 +3,10 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 
+	"transaction_service/config"
 	"transaction_service/internal/models"
 
 	"github.com/segmentio/kafka-go"
@@ -20,18 +21,20 @@ type Consumer struct {
 	pm     PaymentManager
 }
 
-func New(ctx context.Context, topic string, pm PaymentManager) *Consumer {
+func New(ctx context.Context, cfg config.Config, pm PaymentManager) (*Consumer, error) {
 	consumer := &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers: []string{"localhost:9092"},
-			Topic:   topic,
-			// Partition: 0,
-			MaxBytes: 10e6, // 10MB
+			Brokers:               []string{cfg.Kafka.Broker1Address},
+			GroupID:               cfg.Kafka.ConsumerGroup,
+			Topic:                 cfg.Kafka.Topic,
+			WatchPartitionChanges: true,
 		}),
 		pm: pm,
 	}
-	go consumer.Read(ctx)
-	return consumer
+
+	go consumer.Run(ctx)
+
+	return consumer, nil
 }
 
 func (c *Consumer) Close() error {
@@ -39,26 +42,40 @@ func (c *Consumer) Close() error {
 		slog.Error("failed to close reader:", "err", err.Error())
 		return err
 	}
+	slog.Info("reader was successfully closed")
 	return nil
 }
 
-func (c *Consumer) Read(ctx context.Context) error {
+func (c *Consumer) Run(ctx context.Context) {
 	for {
-		m, err := c.reader.ReadMessage(ctx)
+		// the `FetchMessage` method blocks until we receive the next event
+		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
-			slog.Error("error with reading from kafka:", "err", err.Error())
-			return err
+			if errors.Is(err, context.Canceled) {
+				slog.Info("Consumer context canceled. Exiting...")
+				return
+			}
+			slog.Error("could not fetch message", "func", "Consumer: Run", "err", err.Error())
+			return
 		}
-		fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 
 		var payment models.Payment
-		err = json.Unmarshal(m.Value, &payment)
+		err = json.Unmarshal(msg.Value, &payment)
 		if err != nil {
 			slog.Error("error with unmarshal msg:", "err", err.Error())
 		}
+
+		slog.Info("msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", payment.UUID)
+
 		_, err = c.pm.CreatePayment(ctx, payment)
 		if err != nil {
-			slog.Error("error with createPaymnet:", "err", err.Error())
+			slog.Error("error with createPayment:", "err", err.Error())
+		}
+
+		err = c.reader.CommitMessages(context.Background(), msg)
+		if err != nil {
+			slog.Error("error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
+			return
 		}
 	}
 }

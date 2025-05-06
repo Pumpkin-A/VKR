@@ -1,8 +1,10 @@
 package config
 
 type KafkaConfig struct {
-	BootstrapServers string
-	Topic            string
+	Broker1Address string
+	Topic          string
+	ConsumerGroup  string
+	// NumberOfConsumers int
 }
 
 type DBConfig struct {
@@ -26,8 +28,10 @@ func New() Config {
 		// 	Port: 8080,
 		// },
 		Kafka: KafkaConfig{
-			BootstrapServers: "localhost:9092",
-			Topic:            "CreationTransaction2",
+			Broker1Address: "localhost:9092",
+			Topic:          "CreationTransaction7",
+			ConsumerGroup:  "TransactionService3",
+			// NumberOfConsumers: 3,
 		},
 		DB: DBConfig{
 			DbHost:     "localhost",

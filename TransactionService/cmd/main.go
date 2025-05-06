@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os/signal"
+	"syscall"
 	"transaction_service/config"
 	broker "transaction_service/internal/broker/consumer"
 	"transaction_service/internal/db"
@@ -9,16 +12,20 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	mainCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	cfg := config.New()
 
 	db := db.New(cfg)
-	defer db.DB.Close()
+	defer func() {
+		db.DB.Close()
+		slog.Info("DB was closed")
+	}()
 
 	pm := paymentManager.New(db)
 
-	consumer := broker.New(ctx, cfg.Kafka.Topic, pm)
-	defer consumer.Close()
+	broker.New(mainCtx, cfg, pm)
 
 	for {
 	}
