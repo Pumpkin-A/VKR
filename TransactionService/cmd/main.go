@@ -48,10 +48,18 @@ func main() {
 
 	g, _ := errgroup.WithContext(mainCtx)
 	g.Go(func() error {
-		defer slog.Info("consumer was closed")
+		defer slog.Info("GatewayConsumer was closed")
 		defer stop()
 
-		consumer.Run(mainCtx)
+		consumer.ReadFromGateway(mainCtx)
+		return nil
+	})
+
+	g.Go(func() error {
+		defer slog.Info("BillingConsumer was closed")
+		defer stop()
+
+		consumer.ReadFromBilling(mainCtx)
 		return nil
 	})
 

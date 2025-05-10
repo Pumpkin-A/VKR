@@ -53,6 +53,19 @@ func (db *PostgresDB) AddPayment(p models.Payment) error {
 	return nil
 }
 
+func (db *PostgresDB) UpdatePaymentStatus(uuid, status string) error {
+	updateQuery := `UPDATE payment
+	SET status_id = (SELECT id from status WHERE status.status=$1)
+	WHERE uuid = $2;`
+	_, err := db.DB.Exec(updateQuery, status, uuid)
+	if err != nil {
+		slog.Error("error with updating payment status", "err", err.Error())
+		return err
+	}
+	slog.Info("payment status was successfully updated in DB", "uuid:", uuid)
+	return nil
+}
+
 func (db *PostgresDB) AddCardIfNotExist(c models.Card) error {
 	insertQuery := `insert into card (number, expiry_month, expiry_year, card_type, code, name, issuer_country, issuer_name_id)
 	select $1, $2, $3, $4, $5, $6, $7, (select id from issuer_name where issuer_name.issuer_name=$8)
@@ -99,4 +112,26 @@ func (db *PostgresDB) GetPayment(uuid string) (models.Payment, error) {
 	log.Println(p)
 
 	return p, nil
+}
+
+func (db *PostgresDB) GetPaymentStatus(uuid string) (models.PaymentStatus, error) {
+	selectQuery := `select s.status from payment as p
+	join status as s on p.status_id = s.id
+	where uuid = $1;`
+	row := db.DB.QueryRow(selectQuery, uuid)
+	if err := row.Err(); err != nil {
+		slog.Error("error with query row in GetPaymentStatus", "err", err.Error())
+		return "", err
+	}
+	log.Println(row)
+
+	var status models.PaymentStatus
+	err := row.Scan(&status)
+	if err != nil {
+		slog.Error("error with scan row in GetPaymentStatus", "err", err.Error())
+		return "", err
+	}
+	log.Println(status)
+
+	return status, nil
 }

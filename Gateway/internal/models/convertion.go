@@ -9,7 +9,7 @@ import (
 func (req *CreatePaymentRequest) ConvertToExternalTransactionOperationEvent() ExternalTransactionOperationEvent {
 	return ExternalTransactionOperationEvent{
 		UUID:          uuid.NewString(),
-		Status:        CreatedPaymentStatus,
+		Status:        InProcessingPaymentStatus,
 		Paid:          false,
 		Amount:        req.Amount,
 		CreatedAt:     time.Now(),

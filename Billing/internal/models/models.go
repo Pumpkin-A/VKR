@@ -9,43 +9,64 @@ type (
 	Currency             string
 	PaymentType          string
 	TransactionOperation string
+	BankExampleStatus    string
 )
 
 var (
 	SuccessPaymentStatus       PaymentStatus        = "success"
 	FailedPaymentStatus        PaymentStatus        = "failed"
 	InProcessingPaymentStatus  PaymentStatus        = "inProcessing"
-	ErrorPaymentStatus         PaymentStatus        = "error"
-	RefundedPaymentStatus      PaymentStatus        = "refunded"
-	CancelledPaymentStatus     PaymentStatus        = "cancelled"
+	ErrorStatus                PaymentStatus        = "error"
+	RefundedStatus             PaymentStatus        = "refunded"
+	CancelledStatus            PaymentStatus        = "cancelled"
 	RussianRubleCurrency       Currency             = "RUB"
 	SBPPaymentType             PaymentType          = "SBP"
 	CreditCardPaymentType      PaymentType          = "bank_card"
 	CreateTransactionOperation TransactionOperation = "create"
 	RefundTransactionOperation TransactionOperation = "refund"
 	CancelTransactionOperation TransactionOperation = "cancel"
+	SuccessedBankExampleStatus BankExampleStatus    = "success"
+	FailedBankExampleStatus    BankExampleStatus    = "failed"
+	ErrorBankExampleStatus     BankExampleStatus    = "error"
+	UnknownBankExampleStatus   BankExampleStatus    = "unknown"
 )
 
-type CreatePaymentRequest struct {
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
+type ResultOfRequestFromBank struct {
+	UUID      string `json:"UUID"`
+	Status    string `json:"status"` // successed, failed, error
+	ErrorText string `json:"errorText"`
 }
 
-type ExternalTransactionOperationEvent struct {
+type Payment struct {
+	UUID          string        `json:"id"`
+	Amount        amount        `json:"amount"`
+	CreatedAt     time.Time     `json:"created_at"`
+	ExpiresAt     time.Time     `json:"expires_at"`
+	PaymentMethod paymentMethod `json:"payment_method"`
+	Recipient     recipient     `json:"recipient"`
+	Refundable    bool          `json:"refundable"`
+	Test          bool          `json:"test"`
+	IncomeAmount  amount        `json:"income_amount"`
+}
+
+type EventInternalTransactionOperation struct {
 	UUID                 string               `json:"id"`
 	TransactionOperation TransactionOperation `json:"transactionOperation"`
-	Status               PaymentStatus        `json:"status"`
-	Paid                 bool                 `json:"paid"`
 	Amount               amount               `json:"amount"`
 	CreatedAt            time.Time            `json:"created_at"`
-	Description          string               `json:"description"`
 	ExpiresAt            time.Time            `json:"expires_at"`
 	PaymentMethod        paymentMethod        `json:"payment_method"`
 	Recipient            recipient            `json:"recipient"`
 	Refundable           bool                 `json:"refundable"`
 	Test                 bool                 `json:"test"`
 	IncomeAmount         amount               `json:"income_amount"`
+}
+
+type EventInternalPaymentResult struct {
+	UUID                 string               `json:"id"`
+	TransactionOperation TransactionOperation `json:"transactionOperation"`
+	Status               BankExampleStatus    `json:"status"`
+	Error                string               `json:"errorText"`
 }
 
 type amount struct {

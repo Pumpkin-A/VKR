@@ -14,66 +14,118 @@ import (
 
 type PaymentManager interface {
 	CreatePayment(ctx context.Context, payment models.Payment) (string, error)
+	ResultProcessing(ctx context.Context, res models.PaymentResult) error
 }
 
 type Consumer struct {
-	reader *kafka.Reader
-	pm     PaymentManager
+	gatewayReader *kafka.Reader
+	billingReader *kafka.Reader
+	pm            PaymentManager
 }
 
 func NewConsumer(ctx context.Context, cfg config.Config, pm PaymentManager) (*Consumer, error) {
 	consumer := &Consumer{
-		reader: kafka.NewReader(kafka.ReaderConfig{
+		gatewayReader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:               []string{cfg.Kafka.Broker1Address},
 			GroupID:               cfg.Kafka.ConsumerGroup,
-			Topic:                 cfg.Kafka.ExternalTransactionOperationsTopic,
+			Topic:                 cfg.Kafka.TopicExternalTransactionOperations,
+			WatchPartitionChanges: true,
+		}),
+		billingReader: kafka.NewReader(kafka.ReaderConfig{
+			Brokers:               []string{cfg.Kafka.Broker1Address},
+			GroupID:               cfg.Kafka.ConsumerGroup,
+			Topic:                 cfg.Kafka.TopicInternalPaymentResult,
 			WatchPartitionChanges: true,
 		}),
 		pm: pm,
 	}
 
-	// go consumer.Run(ctx)
-
 	return consumer, nil
 }
 
 func (c *Consumer) Close() error {
-	if err := c.reader.Close(); err != nil {
+	if err := c.gatewayReader.Close(); err != nil {
 		slog.Error("failed to close reader:", "err", err.Error())
 		return err
 	}
-	slog.Info("reader was successfully closed")
+	if err := c.billingReader.Close(); err != nil {
+		slog.Error("failed to close reader:", "err", err.Error())
+		return err
+	}
+	slog.Info("readers was successfully closed")
 	return nil
 }
 
-func (c *Consumer) Run(ctx context.Context) {
+func (c *Consumer) ReadFromGateway(ctx context.Context) {
 	for {
-		msg, err := c.reader.FetchMessage(ctx)
+		msg, err := c.gatewayReader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
-				slog.Info("Consumer context canceled. Exiting...")
+				slog.Info("[gatewayReader] Consumer context canceled. Exiting...")
 				return
 			}
-			slog.Error("could not fetch message", "func", "Consumer: Run", "err", err.Error())
+			slog.Error("[gatewayReader] could not fetch message", "func", "Consumer: Run", "err", err.Error())
 			return
 		}
 
-		var payment models.Payment
-		err = json.Unmarshal(msg.Value, &payment)
+		var event models.EventExternalTransactionOperation
+		err = json.Unmarshal(msg.Value, &event)
+		if err != nil {
+			slog.Error("[gatewayReader] error with unmarshal msg:", "err", err.Error())
+		}
+
+		slog.Info("[gatewayReader] msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", event.UUID)
+
+		payment := event.ConvertToPayment()
+		switch event.TransactionOperation {
+		case models.CreateTransactionOperation:
+			_, err = c.pm.CreatePayment(ctx, payment)
+			if err != nil {
+				slog.Error("[gatewayReader] error with createPayment:", "err", err.Error())
+			}
+		default:
+			slog.Error("[gatewayReader] unknown transaction operation", "payment uuid:", payment.UUID, "err", err.Error())
+			return
+		}
+		err = c.gatewayReader.CommitMessages(context.Background(), msg)
+		if err != nil {
+			slog.Error("[gatewayReader] error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
+			return
+		}
+	}
+}
+
+func (c *Consumer) ReadFromBilling(ctx context.Context) {
+	for {
+		msg, err := c.billingReader.FetchMessage(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				slog.Info("[billingReader] Consumer context canceled. Exiting...")
+				return
+			}
+			slog.Error("[billingReader] could not fetch message", "func", "Consumer: Run", "err", err.Error())
+			return
+		}
+
+		var eventResult models.EventInternalPaymentResult
+		err = json.Unmarshal(msg.Value, &eventResult)
 		if err != nil {
 			slog.Error("error with unmarshal msg:", "err", err.Error())
+			return
 		}
 
-		slog.Info("msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", payment.UUID)
+		slog.Info("[billingReader] msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", eventResult.UUID)
 
-		_, err = c.pm.CreatePayment(ctx, payment)
+		res := eventResult.ConvertToPaymentResult()
+		err = c.pm.ResultProcessing(ctx, res)
 		if err != nil {
-			slog.Error("error with createPayment:", "err", err.Error())
+			slog.Error("error with ResultProcessing:", "err", err.Error())
+			return
 		}
 
-		err = c.reader.CommitMessages(context.Background(), msg)
+		err = c.billingReader.CommitMessages(context.Background(), msg)
 		if err != nil {
-			slog.Error("error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
+			slog.Error("error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", res.UUID, "err", err.Error())
 			return
 		}
 		// }

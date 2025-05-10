@@ -9,24 +9,29 @@ type (
 	Currency             string
 	PaymentType          string
 	TransactionOperation string
+	BankStatus           string
 )
 
 var (
 	SuccessPaymentStatus       PaymentStatus        = "success"
 	FailedPaymentStatus        PaymentStatus        = "failed"
 	InProcessingPaymentStatus  PaymentStatus        = "inProcessing"
-	ErrorStatus                PaymentStatus        = "error"
-	RefundedStatus             PaymentStatus        = "refunded"
-	CancelledStatus            PaymentStatus        = "cancelled"
+	ErrorPaymentStatus         PaymentStatus        = "error"
+	RefundedPaymentStatus      PaymentStatus        = "refunded"
+	CancelledPaymentStatus     PaymentStatus        = "cancelled"
 	RussianRubleCurrency       Currency             = "RUB"
 	SBPPaymentType             PaymentType          = "SBP"
 	CreditCardPaymentType      PaymentType          = "bank_card"
 	CreateTransactionOperation TransactionOperation = "create"
 	RefundTransactionOperation TransactionOperation = "refund"
 	CancelTransactionOperation TransactionOperation = "cancel"
+	SuccessedBankStatus        BankStatus           = "success"
+	FailedBankStatus           BankStatus           = "failed"
+	ErrorBankStatus            BankStatus           = "error"
+	UnknownBankStatus          BankStatus           = "unknown"
 )
 
-type ExternalTransactionOperationEvent struct {
+type EventExternalTransactionOperation struct {
 	UUID                 string               `json:"id"`
 	TransactionOperation TransactionOperation `json:"transactionOperation"`
 	Status               PaymentStatus        `json:"status"`
@@ -57,7 +62,7 @@ type Payment struct {
 	IncomeAmount  amount        `json:"income_amount"`
 }
 
-type InternalTransactionOperationEvent struct {
+type EventInternalTransactionOperation struct {
 	UUID                 string               `json:"id"`
 	TransactionOperation TransactionOperation `json:"transactionOperation"`
 	Amount               amount               `json:"amount"`
@@ -68,6 +73,26 @@ type InternalTransactionOperationEvent struct {
 	Refundable           bool                 `json:"refundable"`
 	Test                 bool                 `json:"test"`
 	IncomeAmount         amount               `json:"income_amount"`
+}
+
+type EventInternalPaymentResult struct {
+	UUID                 string               `json:"id"`
+	TransactionOperation TransactionOperation `json:"transactionOperation"`
+	Status               BankStatus           `json:"status"`
+	Error                string               `json:"errorText"`
+}
+
+type PaymentResult struct {
+	UUID                 string               `json:"id"`
+	TransactionOperation TransactionOperation `json:"transactionOperation"`
+	Status               BankStatus           `json:"status"`
+	Error                string               `json:"errorText"`
+}
+
+type EventExternalPaymentResult struct {
+	UUID   string        `json:"id"`
+	Status PaymentStatus `json:"status"`
+	Error  string        `json:"errorText"`
 }
 
 type amount struct {

@@ -2,8 +2,10 @@ package config
 
 type KafkaConfig struct {
 	Broker1Address                     string
-	ExternalTransactionOperationsTopic string
-	InternalTransactionOperationsTopic string
+	TopicExternalTransactionOperations string
+	TopicInternalTransactionOperations string
+	TopicInternalPaymentResult         string
+	TopicTransactionFinishStatus       string
 	ConsumerGroup                      string
 }
 
@@ -29,8 +31,10 @@ func New() Config {
 		// },
 		Kafka: KafkaConfig{
 			Broker1Address:                     "localhost:9092",
-			ExternalTransactionOperationsTopic: "ExternalTransactionOperations",
-			InternalTransactionOperationsTopic: "InternalTransactionOperations",
+			TopicExternalTransactionOperations: "ExternalTransactionOperations",
+			TopicInternalTransactionOperations: "InternalTransactionOperations",
+			TopicInternalPaymentResult:         "InternalPaymentResult",
+			TopicTransactionFinishStatus:       "TransactionFinishStatus",
 			ConsumerGroup:                      "TransactionService",
 		},
 		DB: DBConfig{
