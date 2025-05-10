@@ -21,18 +21,18 @@ type Consumer struct {
 	pm     PaymentManager
 }
 
-func New(ctx context.Context, cfg config.Config, pm PaymentManager) (*Consumer, error) {
+func NewConsumer(ctx context.Context, cfg config.Config, pm PaymentManager) (*Consumer, error) {
 	consumer := &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:               []string{cfg.Kafka.Broker1Address},
 			GroupID:               cfg.Kafka.ConsumerGroup,
-			Topic:                 cfg.Kafka.Topic,
+			Topic:                 cfg.Kafka.ExternalTransactionOperationsTopic,
 			WatchPartitionChanges: true,
 		}),
 		pm: pm,
 	}
 
-	go consumer.Run(ctx)
+	// go consumer.Run(ctx)
 
 	return consumer, nil
 }
@@ -48,7 +48,6 @@ func (c *Consumer) Close() error {
 
 func (c *Consumer) Run(ctx context.Context) {
 	for {
-		// the `FetchMessage` method blocks until we receive the next event
 		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -77,5 +76,6 @@ func (c *Consumer) Run(ctx context.Context) {
 			slog.Error("error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
 			return
 		}
+		// }
 	}
 }

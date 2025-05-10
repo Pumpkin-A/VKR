@@ -1,10 +1,10 @@
 package config
 
 type KafkaConfig struct {
-	Broker1Address string
-	Topic          string
-	ConsumerGroup  string
-	// NumberOfConsumers int
+	Broker1Address                     string
+	ExternalTransactionOperationsTopic string
+	InternalTransactionOperationsTopic string
+	ConsumerGroup                      string
 }
 
 type DBConfig struct {
@@ -28,17 +28,17 @@ func New() Config {
 		// 	Port: 8080,
 		// },
 		Kafka: KafkaConfig{
-			Broker1Address: "localhost:9092",
-			Topic:          "CreationTransaction7",
-			ConsumerGroup:  "TransactionService3",
-			// NumberOfConsumers: 3,
+			Broker1Address:                     "localhost:9092",
+			ExternalTransactionOperationsTopic: "ExternalTransactionOperations",
+			InternalTransactionOperationsTopic: "InternalTransactionOperations",
+			ConsumerGroup:                      "TransactionService",
 		},
 		DB: DBConfig{
 			DbHost:     "localhost",
-			DbPort:     5555,
-			DbUser:     "docker",
-			DbPassword: "docker",
-			DbName:     "docker",
+			DbPort:     5432,
+			DbUser:     "postgres",
+			DbPassword: "postgres",
+			DbName:     "vkr",
 			SSLmode:    "disable",
 		},
 	}

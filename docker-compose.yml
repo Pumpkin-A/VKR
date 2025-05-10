@@ -5,6 +5,8 @@ services:
     build: ./db
       # context: ./db
       # dockerfile: db.Dockerfile
+    # volumes:
+      # -  app-db-data: C:\Docker\pgdev:/var/lib/postgresql/data
     restart: always
     environment:
       POSTGRES_DB: docker
@@ -14,3 +16,5 @@ services:
       - "5555:5432"
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
+# volumes:
+  # app-db-data:

@@ -13,13 +13,20 @@ type DB interface {
 	AddCardIfNotExist(c models.Card) error
 }
 
-type PaymentManager struct {
-	DB DB
+type Producer interface {
+	WriteInternalTransactionOperationEvent(ctx context.Context, event models.InternalTransactionOperationEvent) error
+	Close() error
 }
 
-func New(db DB) *PaymentManager {
+type PaymentManager struct {
+	DB       DB
+	Producer Producer
+}
+
+func New(db DB, producer Producer) *PaymentManager {
 	return &PaymentManager{
-		DB: db,
+		DB:       db,
+		Producer: producer,
 	}
 }
 
@@ -36,6 +43,9 @@ func (pm *PaymentManager) CreatePayment(ctx context.Context, payment models.Paym
 	}
 
 	// пишем событие другим
+	event := models.ConvertPaymentToInternalTrasactionOperationEvent(payment)
+	event.TransactionOperation = models.CreateTransactionOperation
+	_ = pm.Producer.WriteInternalTransactionOperationEvent(ctx, event)
 
 	return payment.UUID, nil
 }

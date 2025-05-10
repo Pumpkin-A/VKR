@@ -21,7 +21,7 @@ func New() Config {
 		},
 		Kafka: KafkaConfig{
 			BootstrapServers: "localhost:9092",
-			Topic:            "CreationTransaction7",
+			Topic:            "ExternalTransactionOperations",
 		},
 	}
 	return config

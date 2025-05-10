@@ -1,4 +1,4 @@
-package paymentmanager
+package paymentManager
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 )
 
 type Producer interface {
-	WriteCreatePaymentEvent(ctx context.Context, payment models.CreatePaymentEvent) error
+	WriteExternalTransactionOperationEvent(ctx context.Context, payment models.ExternalTransactionOperationEvent) error
 	Close() error
 }
 
@@ -22,19 +22,20 @@ func New(producer Producer) *PaymentManager {
 }
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error) {
-	payment := models.ConvertCreatePaymentRequestToPayment(requestData)
+	trOperationEvent := requestData.ConvertToExternalTransactionOperationEvent()
+	trOperationEvent.TransactionOperation = models.CreateTransactionOperation
 
-	pm.Producer.WriteCreatePaymentEvent(ctx, payment)
+	_ = pm.Producer.WriteExternalTransactionOperationEvent(ctx, trOperationEvent)
 
-	return payment.UUID, nil
+	return trOperationEvent.UUID, nil
 }
 
-func (pm *PaymentManager) GetPayment(ctx context.Context, uuid string) (models.CreatePaymentEvent, error) {
+func (pm *PaymentManager) GetPayment(ctx context.Context, uuid string) (models.ExternalTransactionOperationEvent, error) {
 	log.Printf("Получение транзакции из бд, id: %s\n", uuid)
 	// payment, err := pm.DB.GetPayment(uuid)
 	// if err != nil {
 	// 	return models.Payment{}, err
 	// }
 
-	return models.CreatePaymentEvent{}, nil
+	return models.ExternalTransactionOperationEvent{}, nil
 }

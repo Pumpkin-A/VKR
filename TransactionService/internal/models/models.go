@@ -5,32 +5,51 @@ import (
 )
 
 type (
-	PaymentStatus string
-	Currency      string
-	PaymentType   string
+	PaymentStatus        string
+	Currency             string
+	PaymentType          string
+	TransactionOperation string
 )
 
 var (
-	CreatedPaymentStatus      PaymentStatus = "created"
-	SuccessPaymentStatus      PaymentStatus = "success"
-	FailedPaymentStatus       PaymentStatus = "failed"
-	InProcessingPaymentStatus PaymentStatus = "inProcessing"
-	RussianRubleCurrency      Currency      = "RUB"
-	SBPPaymentType            PaymentType   = "SBP"
-	CreditCardPaymentType     PaymentType   = "bank_card"
+	SuccessPaymentStatus       PaymentStatus        = "success"
+	FailedPaymentStatus        PaymentStatus        = "failed"
+	InProcessingPaymentStatus  PaymentStatus        = "inProcessing"
+	ErrorStatus                PaymentStatus        = "error"
+	RefundedStatus             PaymentStatus        = "refunded"
+	CancelledStatus            PaymentStatus        = "cancelled"
+	RussianRubleCurrency       Currency             = "RUB"
+	SBPPaymentType             PaymentType          = "SBP"
+	CreditCardPaymentType      PaymentType          = "bank_card"
+	CreateTransactionOperation TransactionOperation = "create"
+	RefundTransactionOperation TransactionOperation = "refund"
+	CancelTransactionOperation TransactionOperation = "cancel"
 )
 
+type ExternalTransactionOperationEvent struct {
+	UUID                 string               `json:"id"`
+	TransactionOperation TransactionOperation `json:"transactionOperation"`
+	Status               PaymentStatus        `json:"status"`
+	Paid                 bool                 `json:"paid"`
+	Amount               amount               `json:"amount"`
+	CreatedAt            time.Time            `json:"created_at"`
+	Description          string               `json:"description"`
+	ExpiresAt            time.Time            `json:"expires_at"`
+	PaymentMethod        paymentMethod        `json:"payment_method"`
+	Recipient            recipient            `json:"recipient"`
+	Refundable           bool                 `json:"refundable"`
+	Test                 bool                 `json:"test"`
+	IncomeAmount         amount               `json:"income_amount"`
+}
+
 type Payment struct {
-	UUID   string        `json:"id"`
-	Status PaymentStatus `json:"status"`
-	Paid   bool          `json:"paid"`
-	Amount amount        `json:"amount"`
-	// AuthorizationDetails authorizationDetails `json:"authorization_details"`
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	// Metadata    struct {
-	// } `json:"metadata"`
+	UUID          string        `json:"id"`
+	Status        PaymentStatus `json:"status"`
+	Paid          bool          `json:"paid"`
+	Amount        amount        `json:"amount"`
+	CreatedAt     time.Time     `json:"created_at"`
+	Description   string        `json:"description"`
+	ExpiresAt     time.Time     `json:"expires_at"`
 	PaymentMethod paymentMethod `json:"payment_method"`
 	Recipient     recipient     `json:"recipient"`
 	Refundable    bool          `json:"refundable"`
@@ -38,30 +57,31 @@ type Payment struct {
 	IncomeAmount  amount        `json:"income_amount"`
 }
 
+type InternalTransactionOperationEvent struct {
+	UUID                 string               `json:"id"`
+	TransactionOperation TransactionOperation `json:"transactionOperation"`
+	Amount               amount               `json:"amount"`
+	CreatedAt            time.Time            `json:"created_at"`
+	ExpiresAt            time.Time            `json:"expires_at"`
+	PaymentMethod        paymentMethod        `json:"payment_method"`
+	Recipient            recipient            `json:"recipient"`
+	Refundable           bool                 `json:"refundable"`
+	Test                 bool                 `json:"test"`
+	IncomeAmount         amount               `json:"income_amount"`
+}
+
 type amount struct {
 	Value    string   `json:"value"`
 	Currency Currency `json:"currency"`
 }
 
-type authorizationDetails struct {
-	// Rrn      string `json:"rrn"`
-	AuthCode string `json:"auth_code"`
-	// ThreeDSecure struct {
-	// 	Applied bool `json:"applied"`
-	// } `json:"three_d_secure"`
-}
-
 type paymentMethod struct {
 	Type string `json:"type"`
 	ID   string `json:"id"`
-	// Saved bool   `json:"saved"`
-	Card Card `json:"card"`
-	// Title string `json:"title"`
+	Card Card   `json:"card"`
 }
 
 type Card struct {
-	// First6      string `json:"first6"`
-	// Last4       string `json:"last4"`
 	Number      string `json:"number"`
 	ExpiryMonth int    `json:"expiry_month"`
 	ExpiryYear  int    `json:"expiry_year"`

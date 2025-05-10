@@ -6,16 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) CreatePaymentEvent {
-	return CreatePaymentEvent{
-		UUID:   uuid.NewString(),
-		Status: CreatedPaymentStatus,
-		Paid:   false,
-		Amount: req.Amount,
-		// AuthorizationDetails: authorizationDetails{
-		// 	Rrn:      "10000000000",
-		// 	AuthCode: "000000",
-		// },
+func (req *CreatePaymentRequest) ConvertToExternalTransactionOperationEvent() ExternalTransactionOperationEvent {
+	return ExternalTransactionOperationEvent{
+		UUID:          uuid.NewString(),
+		Status:        CreatedPaymentStatus,
+		Paid:          false,
+		Amount:        req.Amount,
 		CreatedAt:     time.Now(),
 		Description:   "",
 		ExpiresAt:     time.Now().Add(time.Duration(time.Minute * 30)),
@@ -27,13 +23,5 @@ func ConvertCreatePaymentRequestToPayment(req CreatePaymentRequest) CreatePaymen
 			Value:    "33.33",
 			Currency: RussianRubleCurrency,
 		},
-	}
-}
-
-func ConvertCreatePaymentRequestToEvent(req CreatePaymentRequest) CreatePaymentEvent {
-	return CreatePaymentEvent{
-		Amount:        req.Amount,
-		PaymentMethod: req.PaymentMethod,
-		Recipient:     req.Recipient,
 	}
 }
