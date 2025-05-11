@@ -53,6 +53,50 @@ func (pm *PaymentManager) CreatePayment(ctx context.Context, payment models.Paym
 	return payment.UUID, nil
 }
 
+func (pm *PaymentManager) MakeRefund(ctx context.Context, payment models.Payment) error {
+	curStatus, err := pm.DB.GetPaymentStatus(payment.UUID)
+	if err != nil {
+		slog.Error("error with get transaction status from db", "err", err.Error())
+		return err
+	}
+
+	if curStatus != models.InProcessingPaymentStatus {
+		slog.Info("untimely action", "payment uuid:", payment.UUID, "status", curStatus)
+		return nil
+	}
+
+	event := payment.ConvertToInternalTrasactionOperationEvent(models.RefundTransactionOperation)
+	err = pm.Producer.WriteEventInternalTransactionOperation(ctx, event)
+	if err != nil {
+		slog.Error("error with WriteEventInternalTransactionOperation", "err", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (pm *PaymentManager) CancelPayment(ctx context.Context, payment models.Payment) error {
+	curStatus, err := pm.DB.GetPaymentStatus(payment.UUID)
+	if err != nil {
+		slog.Error("error with get transaction status from db", "err", err.Error())
+		return err
+	}
+
+	if curStatus != models.InProcessingPaymentStatus {
+		slog.Info("untimely action", "payment uuid:", payment.UUID, "status", curStatus)
+		return nil
+	}
+
+	event := payment.ConvertToInternalTrasactionOperationEvent(models.CancelTransactionOperation)
+	err = pm.Producer.WriteEventInternalTransactionOperation(ctx, event)
+	if err != nil {
+		slog.Error("error with WriteEventInternalTransactionOperation", "err", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (pm *PaymentManager) setFinalTrsnsactionStatus(ctx context.Context, event models.EventExternalPaymentResult) error {
 	err := pm.DB.UpdatePaymentStatus(event.UUID, string(event.Status))
 	if err != nil {
@@ -92,9 +136,10 @@ func (pm *PaymentManager) ResultProcessing(ctx context.Context, res models.Payme
 	case res.TransactionOperation == models.CancelTransactionOperation && curStatus == models.InProcessingPaymentStatus && res.Status == models.SuccessedBankStatus:
 		event = res.ConvertToEventExternalPaymentResult(models.CancelledPaymentStatus)
 	default:
-		slog.Info("untimely action", "payment uuid:", res.UUID, "status", curStatus)
+		slog.Info("untimely action", "payment uuid:", res.UUID, "curStatus", curStatus, "res.Status", res.Status)
 		return nil
 	}
+
 	err = pm.setFinalTrsnsactionStatus(ctx, event)
 	if err != nil {
 		slog.Error("error with SetFinalTrsnsactionStatus", "err", err.Error())

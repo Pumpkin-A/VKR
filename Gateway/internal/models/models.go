@@ -32,6 +32,20 @@ type CreatePaymentRequest struct {
 	Recipient     recipient     `json:"recipient"`
 }
 
+type MakeRefundRequest struct {
+	UUID          string        `json:"id"`
+	Amount        amount        `json:"amount"`
+	PaymentMethod paymentMethod `json:"payment_method"`
+	Recipient     recipient     `json:"recipient"`
+}
+
+type CancelPayment struct {
+	UUID          string        `json:"id"`
+	Amount        amount        `json:"amount"`
+	PaymentMethod paymentMethod `json:"payment_method"`
+	Recipient     recipient     `json:"recipient"`
+}
+
 type ExternalTransactionOperationEvent struct {
 	UUID                 string               `json:"id"`
 	TransactionOperation TransactionOperation `json:"transactionOperation"`

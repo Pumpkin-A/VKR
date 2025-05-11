@@ -14,6 +14,8 @@ import (
 
 type PaymentProcessor interface {
 	DoPayment(ctx context.Context, payment models.Payment) (string, error)
+	DoRefund(ctx context.Context, payment models.Payment) (string, error)
+	CancelPayment(ctx context.Context, payment models.Payment) (string, error)
 }
 
 type Consumer struct {
@@ -73,6 +75,20 @@ func (c *Consumer) Run(ctx context.Context) {
 				return
 			}
 			slog.Info("correct payment processing", "method", "doPayment", "uuid", payment.UUID)
+		case models.RefundTransactionOperation:
+			_, err := c.pp.DoRefund(ctx, payment)
+			if err != nil {
+				slog.Error("error with payment processing", "method", "doRefund", "err", err)
+				return
+			}
+			slog.Info("correct payment processing", "method", "doRefund", "uuid", payment.UUID)
+		case models.CancelTransactionOperation:
+			_, err := c.pp.CancelPayment(ctx, payment)
+			if err != nil {
+				slog.Error("error with payment processing", "method", "doRefund", "err", err)
+				return
+			}
+			slog.Info("correct payment processing", "method", "CancelPayment", "uuid", payment.UUID)
 		default:
 			slog.Error("unknown transaction operation")
 			return

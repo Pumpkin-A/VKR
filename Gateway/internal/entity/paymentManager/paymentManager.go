@@ -23,7 +23,22 @@ func New(producer Producer) *PaymentManager {
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error) {
 	trOperationEvent := requestData.ConvertToExternalTransactionOperationEvent()
-	trOperationEvent.TransactionOperation = models.CreateTransactionOperation
+
+	_ = pm.Producer.WriteExternalTransactionOperationEvent(ctx, trOperationEvent)
+
+	return trOperationEvent.UUID, nil
+}
+
+func (pm *PaymentManager) MakeRefund(ctx context.Context, requestData models.MakeRefundRequest) (string, error) {
+	trOperationEvent := requestData.ConvertToExternalTransactionOperationEvent()
+
+	_ = pm.Producer.WriteExternalTransactionOperationEvent(ctx, trOperationEvent)
+
+	return trOperationEvent.UUID, nil
+}
+
+func (pm *PaymentManager) CancelPayment(ctx context.Context, requestData models.CancelPayment) (string, error) {
+	trOperationEvent := requestData.ConvertToExternalTransactionOperationEvent()
 
 	_ = pm.Producer.WriteExternalTransactionOperationEvent(ctx, trOperationEvent)
 

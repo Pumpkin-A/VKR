@@ -15,6 +15,8 @@ import (
 type PaymentManager interface {
 	CreatePayment(ctx context.Context, payment models.Payment) (string, error)
 	ResultProcessing(ctx context.Context, res models.PaymentResult) error
+	MakeRefund(ctx context.Context, payment models.Payment) error
+	CancelPayment(ctx context.Context, payment models.Payment) error
 }
 
 type Consumer struct {
@@ -82,6 +84,16 @@ func (c *Consumer) ReadFromGateway(ctx context.Context) {
 			_, err = c.pm.CreatePayment(ctx, payment)
 			if err != nil {
 				slog.Error("[gatewayReader] error with createPayment:", "err", err.Error())
+			}
+		case models.RefundTransactionOperation:
+			err = c.pm.MakeRefund(ctx, payment)
+			if err != nil {
+				slog.Error("[gatewayReader] error with make refund:", "err", err.Error())
+			}
+		case models.CancelTransactionOperation:
+			err = c.pm.CancelPayment(ctx, payment)
+			if err != nil {
+				slog.Error("[gatewayReader] error with make cancel:", "err", err.Error())
 			}
 		default:
 			slog.Error("[gatewayReader] unknown transaction operation", "payment uuid:", payment.UUID, "err", err.Error())

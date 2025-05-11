@@ -56,6 +56,80 @@ func (s *Server) HandleCreatePayment(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(paymentUUID + "success"))
 }
 
+func (s *Server) HandleMakeRefund(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Printf("Body reading error: %v", err)
+			return
+		}
+		defer r.Body.Close()
+	}
+
+	var paymentReq models.MakeRefundRequest
+	if len(bodyBytes) > 0 {
+		if err = json.Unmarshal(bodyBytes, &paymentReq); err != nil {
+			fmt.Printf("JSON parse error: %v", err)
+			return
+		}
+		fmt.Println(paymentReq)
+	} else {
+		fmt.Printf("Body: No Body Supplied\n")
+	}
+
+	paymentUUID, err := s.PaymentManager.MakeRefund(context.Background(), paymentReq)
+	if err != nil {
+		log.Println("error with creating payment")
+	}
+
+	w.Write([]byte(paymentUUID + "success"))
+}
+
+func (s *Server) HandleCancelPayment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Printf("Body reading error: %v", err)
+			return
+		}
+		defer r.Body.Close()
+	}
+
+	var paymentReq models.CancelPayment
+	if len(bodyBytes) > 0 {
+		if err = json.Unmarshal(bodyBytes, &paymentReq); err != nil {
+			fmt.Printf("JSON parse error: %v", err)
+			return
+		}
+		fmt.Println(paymentReq)
+	} else {
+		fmt.Printf("Body: No Body Supplied\n")
+	}
+
+	paymentUUID, err := s.PaymentManager.CancelPayment(context.Background(), paymentReq)
+	if err != nil {
+		log.Println("error with creating payment")
+	}
+
+	w.Write([]byte(paymentUUID + "success"))
+}
+
 func (s *Server) HandleGetPayment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

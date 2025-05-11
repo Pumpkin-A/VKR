@@ -4,6 +4,7 @@ import (
 	models "billing/internal/models"
 	"context"
 	"log/slog"
+	"math/rand/v2"
 )
 
 type Client interface {
@@ -43,4 +44,50 @@ func (pm *PaymentProcessor) DoPayment(ctx context.Context, payment models.Paymen
 	}
 
 	return payment.UUID, nil
+}
+
+func (pm *PaymentProcessor) DoRefund(ctx context.Context, payment models.Payment) (string, error) {
+	result := models.ResultOfRequestFromBank{
+		UUID:      payment.UUID,
+		Status:    string(randomStatus()),
+		ErrorText: "",
+	}
+
+	event := result.ConvertToEventInternalPaymentResult(models.RefundTransactionOperation)
+	err := pm.producer.WriteEventInternalPaymentResult(ctx, event)
+	if err != nil {
+		return "", err
+	}
+
+	return payment.UUID, nil
+}
+
+func (pm *PaymentProcessor) CancelPayment(ctx context.Context, payment models.Payment) (string, error) {
+	result := models.ResultOfRequestFromBank{
+		UUID:      payment.UUID,
+		Status:    string(randomStatus()),
+		ErrorText: "",
+	}
+
+	event := result.ConvertToEventInternalPaymentResult(models.CancelTransactionOperation)
+	err := pm.producer.WriteEventInternalPaymentResult(ctx, event)
+	if err != nil {
+		return "", err
+	}
+
+	return payment.UUID, nil
+}
+
+func randomStatus() models.BankExampleStatus {
+	var status models.BankExampleStatus
+	randNum := rand.Float64()
+	switch {
+	case randNum <= 0.6: // 60% chance
+		status = models.SuccessedBankExampleStatus
+	case randNum <= 0.9: // 30% chance (0.6 + 0.3)
+		status = models.FailedBankExampleStatus
+	default: // 10% chance
+		status = models.ErrorBankExampleStatus
+	}
+	return status
 }
