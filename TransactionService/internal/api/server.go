@@ -54,7 +54,7 @@ func (s *Server) GetPayment(ctx context.Context, req *pb.PaymentRequest) (*pb.Pa
 		return &pb.PaymentResponse{}, err
 	}
 
-	grpcPaymnet := models.ConvertPaymentToGrpc(payment)
+	grpcPaymnet := convertPaymentToGrpc(payment)
 
 	return grpcPaymnet, nil
 }

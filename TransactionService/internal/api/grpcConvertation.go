@@ -1,12 +1,13 @@
-package models
+package api
 
 import (
+	"transaction_service/internal/models"
 	pb "transaction_service/pkg/pb/github.com/yourproject/pkg/pb/transaction/v1"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ConvertPaymentToGrpc(payment Payment) *pb.PaymentResponse {
+func convertPaymentToGrpc(payment models.Payment) *pb.PaymentResponse {
 	// Конвертация времени
 	createdAt := timestamppb.New(payment.CreatedAt)
 	expiresAt := timestamppb.New(payment.ExpiresAt)
@@ -14,15 +15,15 @@ func ConvertPaymentToGrpc(payment Payment) *pb.PaymentResponse {
 	// Конвертация статуса (пример, адаптируйте под ваши значения)
 	var status pb.PaymentStatus
 	switch payment.Status {
-	case InProcessingPaymentStatus:
+	case models.InProcessingPaymentStatus:
 		status = pb.PaymentStatus_IN_PROCESSING
-	case SuccessPaymentStatus:
+	case models.SuccessPaymentStatus:
 		status = pb.PaymentStatus_SUCCESS
-	case FailedPaymentStatus:
+	case models.FailedPaymentStatus:
 		status = pb.PaymentStatus_FAILED
-	case CancelledPaymentStatus:
+	case models.CancelledPaymentStatus:
 		status = pb.PaymentStatus_CANCELLED
-	case RefundedPaymentStatus:
+	case models.RefundedPaymentStatus:
 		status = pb.PaymentStatus_REFUNDED
 	default:
 		status = pb.PaymentStatus_ERROR
@@ -44,7 +45,7 @@ func ConvertPaymentToGrpc(payment Payment) *pb.PaymentResponse {
 	}
 }
 
-func convertAmountToGrpc(a amount) *pb.Amount {
+func convertAmountToGrpc(a models.Amount) *pb.Amount {
 	var currency pb.Currency
 	switch a.Currency {
 	case "RUB":
@@ -60,7 +61,7 @@ func convertAmountToGrpc(a amount) *pb.Amount {
 	}
 }
 
-func convertPaymentMethodToGrpc(pm paymentMethod) *pb.PaymentMethod {
+func convertPaymentMethodToGrpc(pm models.PaymentMethod) *pb.PaymentMethod {
 	var paymentType pb.PaymentType
 	switch pm.Type {
 	case "SBP":
@@ -78,7 +79,7 @@ func convertPaymentMethodToGrpc(pm paymentMethod) *pb.PaymentMethod {
 	}
 }
 
-func convertCardToGrpc(c Card) *pb.Card {
+func convertCardToGrpc(c models.Card) *pb.Card {
 	return &pb.Card{
 		Number:        c.Number,
 		ExpiryMonth:   int32(c.ExpiryMonth),
@@ -100,7 +101,7 @@ func convertCardProductToGrpc(cp struct {
 	}
 }
 
-func convertRecipientToGrpc(r recipient) *pb.Recipient {
+func convertRecipientToGrpc(r models.Recipient) *pb.Recipient {
 	return &pb.Recipient{
 		AccountNumber: r.AccountNumber,
 		Title:         r.Title,
