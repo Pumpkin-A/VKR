@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package transaction.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yourproject/pkg/pb/transaction/v1;transactionv1";
+
+service PaymentService {
+  rpc GetPayment(PaymentRequest) returns (PaymentResponse);
+}
+
+message PaymentRequest {
+  string payment_id = 1;
+}
+
+// Статусы платежа
+enum PaymentStatus {
+  SUCCESS = 0;          // "success"
+  FAILED = 1;           // "failed"
+  IN_PROCESSING = 2;    // "inProcessing"
+  ERROR = 3;            // "error"
+  REFUNDED = 4;         // "refunded"
+  CANCELLED = 5;        // "cancelled"
+}
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_RUB = 1;  // "RUB"
+}
+
+enum PaymentType {
+  PAYMENT_TYPE_UNSPECIFIED = 0;
+  PAYMENT_TYPE_SBP = 1;          // "SBP"
+  PAYMENT_TYPE_BANK_CARD = 2;    // "bank_card"
+}
+
+message PaymentResponse {
+  string uuid = 1;
+  PaymentStatus status = 2;
+  bool paid = 3;
+  Amount amount = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string description = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  PaymentMethod payment_method = 8;
+  Recipient recipient = 9;
+  bool refundable = 10;
+  bool test = 11;
+  Amount income_amount = 12;
+}
+
+message Amount {
+  string value = 1;
+  Currency currency = 2;
+}
+
+message PaymentMethod {
+  PaymentType type = 1;
+  string id = 2;
+  Card card = 3;
+}
+
+message Card {
+  string number = 1;
+  int32 expiry_month = 2;
+  int32 expiry_year = 3;
+  string card_type = 4; 
+  CardProduct card_product = 5;
+  string issuer_country = 6;
+  string issuer_name = 7;
+}
+
+message CardProduct {
+  int32 code = 1;
+  string name = 2;
+}
+
+message Recipient {
+  string account_number = 1;
+  string title = 2;
+}

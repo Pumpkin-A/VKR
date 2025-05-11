@@ -120,6 +120,7 @@ func (pm *PaymentManager) ResultProcessing(ctx context.Context, res models.Payme
 	}
 
 	var event models.EventExternalPaymentResult
+
 	switch {
 	case res.TransactionOperation == models.CreateTransactionOperation && curStatus == models.InProcessingPaymentStatus:
 		if res.Status == models.SuccessedBankStatus {

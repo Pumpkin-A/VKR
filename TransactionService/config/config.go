@@ -18,17 +18,21 @@ type DBConfig struct {
 	SSLmode    string
 }
 
+type ServerConfig struct {
+	Port string
+}
+
 type Config struct {
-	// Server ServerConfig
-	Kafka KafkaConfig
-	DB    DBConfig
+	Server ServerConfig
+	Kafka  KafkaConfig
+	DB     DBConfig
 }
 
 func New() Config {
 	config := Config{
-		// Server: ServerConfig{
-		// 	Port: 8080,
-		// },
+		Server: ServerConfig{
+			Port: "localhost:50051",
+		},
 		Kafka: KafkaConfig{
 			Broker1Address:                     "localhost:9092",
 			TopicExternalTransactionOperations: "ExternalTransactionOperations",

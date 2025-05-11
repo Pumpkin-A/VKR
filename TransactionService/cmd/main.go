@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"transaction_service/config"
+	"transaction_service/internal/api"
 	consumer "transaction_service/internal/broker/consumer"
 	producer "transaction_service/internal/broker/producer"
 	"transaction_service/internal/db"
@@ -45,8 +46,9 @@ func main() {
 	pm := paymentManager.New(db, producer)
 
 	consumer, _ := consumer.NewConsumer(mainCtx, cfg, pm)
+	srv := api.New(pm)
 
-	g, _ := errgroup.WithContext(mainCtx)
+	g, gCtx := errgroup.WithContext(mainCtx)
 	g.Go(func() error {
 		defer slog.Info("GatewayConsumer was closed")
 		defer stop()
@@ -60,6 +62,25 @@ func main() {
 		defer stop()
 
 		consumer.ReadFromBilling(mainCtx)
+		return nil
+	})
+
+	g.Go(func() error {
+		defer slog.Info("server was closed")
+		defer stop()
+
+		err := srv.Start(cfg)
+		if err != nil {
+			slog.Error("error with run grpc server", "err", err.Error())
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		<-gCtx.Done()
+		srv.Stop()
+		slog.Info("server exiting")
 		return nil
 	})
 

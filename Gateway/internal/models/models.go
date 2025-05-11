@@ -46,6 +46,21 @@ type CancelPayment struct {
 	Recipient     recipient     `json:"recipient"`
 }
 
+type Payment struct {
+	UUID          string        `json:"id"`
+	Status        PaymentStatus `json:"status"`
+	Paid          bool          `json:"paid"`
+	Amount        amount        `json:"amount"`
+	CreatedAt     time.Time     `json:"created_at"`
+	Description   string        `json:"description"`
+	ExpiresAt     time.Time     `json:"expires_at"`
+	PaymentMethod paymentMethod `json:"payment_method"`
+	Recipient     recipient     `json:"recipient"`
+	Refundable    bool          `json:"refundable"`
+	Test          bool          `json:"test"`
+	IncomeAmount  amount        `json:"income_amount"`
+}
+
 type ExternalTransactionOperationEvent struct {
 	UUID                 string               `json:"id"`
 	TransactionOperation TransactionOperation `json:"transactionOperation"`
