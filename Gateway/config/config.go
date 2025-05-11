@@ -4,6 +4,10 @@ type ServerConfig struct {
 	Port int
 }
 
+type ClientConfig struct {
+	ServerAddress string
+}
+
 type KafkaConfig struct {
 	BootstrapServers string
 	Topic            string
@@ -12,6 +16,7 @@ type KafkaConfig struct {
 type Config struct {
 	Server ServerConfig
 	Kafka  KafkaConfig
+	Client ClientConfig
 }
 
 func New() Config {
@@ -22,6 +27,9 @@ func New() Config {
 		Kafka: KafkaConfig{
 			BootstrapServers: "localhost:9092",
 			Topic:            "ExternalTransactionOperations",
+		},
+		Client: ClientConfig{
+			ServerAddress: "localhost:50051",
 		},
 	}
 	return config

@@ -9,6 +9,7 @@ import (
 	"payment_gateway/internal/api"
 	"payment_gateway/internal/broker"
 	paymentmanager "payment_gateway/internal/entity/paymentManager"
+	"payment_gateway/internal/grpcClient"
 	"syscall"
 
 	"golang.org/x/sync/errgroup"
@@ -32,7 +33,18 @@ func main() {
 		}
 	}()
 
-	pm := paymentmanager.New(producer)
+	grpcClient, err := grpcClient.NewPaymentClient(cfg)
+	if err != nil {
+		slog.Error("error with grpc client creating")
+		stop()
+	}
+	defer func() {
+		if err := grpcClient.Close(); err != nil {
+			slog.Error("error with closing grpc client")
+		}
+	}()
+
+	pm := paymentmanager.New(producer, grpcClient)
 
 	s, err := api.New(cfg, pm)
 	if err != nil {

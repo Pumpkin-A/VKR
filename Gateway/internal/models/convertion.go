@@ -20,7 +20,7 @@ func (req *CreatePaymentRequest) ConvertToExternalTransactionOperationEvent() Ex
 		Recipient:            req.Recipient,
 		Refundable:           false,
 		Test:                 false,
-		IncomeAmount: amount{
+		IncomeAmount: Amount{
 			Value:    "33.33",
 			Currency: RussianRubleCurrency,
 		},
@@ -41,7 +41,7 @@ func (req *MakeRefundRequest) ConvertToExternalTransactionOperationEvent() Exter
 		Recipient:            req.Recipient,
 		Refundable:           false,
 		Test:                 false,
-		IncomeAmount: amount{
+		IncomeAmount: Amount{
 			Value:    "33.33",
 			Currency: RussianRubleCurrency,
 		},
@@ -62,7 +62,7 @@ func (req *CancelPayment) ConvertToExternalTransactionOperationEvent() ExternalT
 		Recipient:            req.Recipient,
 		Refundable:           false,
 		Test:                 false,
-		IncomeAmount: amount{
+		IncomeAmount: Amount{
 			Value:    "33.33",
 			Currency: RussianRubleCurrency,
 		},

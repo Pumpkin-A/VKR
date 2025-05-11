@@ -17,7 +17,7 @@ type Server struct {
 
 type PaymentManager interface {
 	CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error)
-	GetPayment(ctx context.Context, uuid string) (models.ExternalTransactionOperationEvent, error)
+	GetPayment(ctx context.Context, uuid string) (models.Payment, error)
 	CancelPayment(ctx context.Context, requestData models.CancelPayment) (string, error)
 	MakeRefund(ctx context.Context, requestData models.MakeRefundRequest) (string, error)
 }

@@ -27,38 +27,38 @@ var (
 )
 
 type CreatePaymentRequest struct {
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
+	Amount        Amount        `json:"amount"`
+	PaymentMethod PaymentMethod `json:"payment_method"`
+	Recipient     Recipient     `json:"recipient"`
 }
 
 type MakeRefundRequest struct {
 	UUID          string        `json:"id"`
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
+	Amount        Amount        `json:"amount"`
+	PaymentMethod PaymentMethod `json:"payment_method"`
+	Recipient     Recipient     `json:"recipient"`
 }
 
 type CancelPayment struct {
 	UUID          string        `json:"id"`
-	Amount        amount        `json:"amount"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
+	Amount        Amount        `json:"amount"`
+	PaymentMethod PaymentMethod `json:"payment_method"`
+	Recipient     Recipient     `json:"recipient"`
 }
 
 type Payment struct {
 	UUID          string        `json:"id"`
 	Status        PaymentStatus `json:"status"`
 	Paid          bool          `json:"paid"`
-	Amount        amount        `json:"amount"`
+	Amount        Amount        `json:"amount"`
 	CreatedAt     time.Time     `json:"created_at"`
 	Description   string        `json:"description"`
 	ExpiresAt     time.Time     `json:"expires_at"`
-	PaymentMethod paymentMethod `json:"payment_method"`
-	Recipient     recipient     `json:"recipient"`
+	PaymentMethod PaymentMethod `json:"payment_method"`
+	Recipient     Recipient     `json:"recipient"`
 	Refundable    bool          `json:"refundable"`
 	Test          bool          `json:"test"`
-	IncomeAmount  amount        `json:"income_amount"`
+	IncomeAmount  Amount        `json:"income_amount"`
 }
 
 type ExternalTransactionOperationEvent struct {
@@ -66,23 +66,23 @@ type ExternalTransactionOperationEvent struct {
 	TransactionOperation TransactionOperation `json:"transactionOperation"`
 	Status               PaymentStatus        `json:"status"`
 	Paid                 bool                 `json:"paid"`
-	Amount               amount               `json:"amount"`
+	Amount               Amount               `json:"amount"`
 	CreatedAt            time.Time            `json:"created_at"`
 	Description          string               `json:"description"`
 	ExpiresAt            time.Time            `json:"expires_at"`
-	PaymentMethod        paymentMethod        `json:"payment_method"`
-	Recipient            recipient            `json:"recipient"`
+	PaymentMethod        PaymentMethod        `json:"payment_method"`
+	Recipient            Recipient            `json:"recipient"`
 	Refundable           bool                 `json:"refundable"`
 	Test                 bool                 `json:"test"`
-	IncomeAmount         amount               `json:"income_amount"`
+	IncomeAmount         Amount               `json:"income_amount"`
 }
 
-type amount struct {
+type Amount struct {
 	Value    string   `json:"value"`
 	Currency Currency `json:"currency"`
 }
 
-type paymentMethod struct {
+type PaymentMethod struct {
 	Type string `json:"type"`
 	ID   string `json:"id"`
 	Card Card   `json:"card"`
@@ -101,7 +101,7 @@ type Card struct {
 	IssuerName    string `json:"issuer_name"`
 }
 
-type recipient struct {
+type Recipient struct {
 	AccountNumber string `json:"account_number"`
 	Title         string `json:"title"`
 }
