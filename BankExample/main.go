@@ -39,7 +39,7 @@ func DoPayment(w http.ResponseWriter, r *http.Request) {
 	var status string
 	switch {
 	case randNum <= 0.6: // 60% chance
-		status = "successed"
+		status = "success"
 	case randNum <= 0.9: // 30% chance (0.6 + 0.3)
 		status = "failed"
 	default: // 10% chance

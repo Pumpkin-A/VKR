@@ -33,7 +33,7 @@ var (
 
 type ResultOfRequestFromBank struct {
 	UUID      string `json:"UUID"`
-	Status    string `json:"status"` // successed, failed, error
+	Status    string `json:"status"` // success, failed, error
 	ErrorText string `json:"errorText"`
 }
 

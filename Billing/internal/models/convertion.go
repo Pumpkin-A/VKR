@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 func (event *EventInternalTransactionOperation) ConvertToPayment() Payment {
 	return Payment{
 		UUID:          event.UUID,
@@ -16,6 +18,7 @@ func (event *EventInternalTransactionOperation) ConvertToPayment() Payment {
 
 func (res *ResultOfRequestFromBank) ConvertToEventInternalPaymentResult(operation TransactionOperation) EventInternalPaymentResult {
 	var status BankExampleStatus
+	fmt.Println(res.Status)
 	switch res.Status {
 	case string(SuccessedBankExampleStatus):
 		status = SuccessedBankExampleStatus
