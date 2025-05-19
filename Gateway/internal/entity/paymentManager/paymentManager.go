@@ -6,6 +6,10 @@ import (
 	"payment_gateway/internal/grpcClient"
 	models "payment_gateway/internal/models"
 	pb "payment_gateway/pkg/pb/github.com/yourproject/pkg/pb/transaction/v1"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Client interface {
@@ -19,17 +23,23 @@ type Producer interface {
 type PaymentManager struct {
 	Producer Producer
 	Client   Client
+	tracer   trace.Tracer
 }
 
 func New(producer Producer, client Client) *PaymentManager {
 	return &PaymentManager{
 		Producer: producer,
 		Client:   client,
+		tracer:   otel.Tracer("paymentManager_gateway"),
 	}
 }
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, requestData models.CreatePaymentRequest) (string, error) {
+	ctx, sp := pm.tracer.Start(ctx, "paymentManager.CreatePayment")
+	defer sp.End()
+
 	trOperationEvent := requestData.ConvertToExternalTransactionOperationEvent()
+	sp.SetAttributes(attribute.String("paymentId", trOperationEvent.UUID))
 
 	_ = pm.Producer.WriteExternalTransactionOperationEvent(ctx, trOperationEvent)
 

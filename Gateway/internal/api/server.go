@@ -7,12 +7,16 @@ import (
 	"net/http"
 	"payment_gateway/config"
 	"payment_gateway/internal/models"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Server struct {
 	PaymentManager PaymentManager
 	Mux            *http.ServeMux
 	Srv            *http.Server
+	tracer         trace.Tracer
 }
 
 type PaymentManager interface {
@@ -26,6 +30,7 @@ func New(cfg config.Config, pm PaymentManager) (*Server, error) {
 	s := &Server{
 		Mux:            http.NewServeMux(),
 		PaymentManager: pm,
+		tracer:         otel.Tracer("http_server_gateway"),
 	}
 	listenAddress := fmt.Sprintf("%s:%d", "0.0.0.0", cfg.Server.Port)
 	s.Srv = &http.Server{

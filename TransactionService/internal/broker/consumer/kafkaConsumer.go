@@ -46,7 +46,7 @@ func NewConsumer(ctx context.Context, cfg config.Config, pm PaymentManager) (*Co
 			WatchPartitionChanges: true,
 		}),
 		pm:     pm,
-		tracer: otel.Tracer("kafka_transaction_service"),
+		tracer: otel.Tracer("kafka_consumer_transaction_service"),
 	}
 
 	return consumer, nil
@@ -67,38 +67,19 @@ func (c *Consumer) Close() error {
 
 func (c *Consumer) ReadFromGateway(ctx context.Context) {
 	for {
-		func() {
+		if err := func() error {
 			msg, err := c.gatewayReader.FetchMessage(ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					slog.Info("[gatewayReader] Consumer context canceled. Exiting...")
-					return
+					return err
 				}
 				slog.Error("[gatewayReader] could not fetch message", "func", "Consumer: Run", "err", err.Error())
-				return
+				return err
 			}
 
-			// Экстрактим tracing контекст из заголовков
-			propagator := otel.GetTextMapPropagator()
-			carrier := propagation.MapCarrier{}
-			for _, header := range msg.Headers {
-				carrier.Set(string(header.Key), string(header.Value))
-			}
-
-			// Создаем новый контекст с tracing информацией
-			ctx = propagator.Extract(ctx, carrier)
-
-			// Создаем span для обработки сообщения
-			ctx, span := c.tracer.Start(ctx, "KafkaConsumer.ReadFromGateway")
+			ctx, span := c.interceptorForKafkaComsumer(ctx, msg)
 			defer span.End()
-
-			// Добавляем атрибуты
-			span.SetAttributes(
-				attribute.String("kafkaTopic", msg.Topic),
-				attribute.Int("kafkaPartition", msg.Partition),
-				attribute.Int64("kafkaOffset", msg.Offset),
-				attribute.String("paymentUUID", string(msg.Key)),
-			)
 
 			var event models.EventExternalTransactionOperation
 			err = json.Unmarshal(msg.Value, &event)
@@ -131,16 +112,19 @@ func (c *Consumer) ReadFromGateway(ctx context.Context) {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				slog.Error("[gatewayReader] unknown transaction operation", "payment uuid:", payment.UUID, "err", err.Error())
-				return
+				return err
 			}
 			err = c.gatewayReader.CommitMessages(ctx, msg)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				slog.Error("[gatewayReader] error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
-				return
+				return err
 			}
-		}()
+			return nil
+		}(); err != nil {
+			return
+		}
 	}
 }
 
@@ -179,4 +163,29 @@ func (c *Consumer) ReadFromBilling(ctx context.Context) {
 		}
 		// }
 	}
+}
+
+func (c *Consumer) interceptorForKafkaComsumer(ctx context.Context, msg kafka.Message) (context.Context, trace.Span) {
+	// Экстрактим tracing контекст из заголовков
+	propagator := otel.GetTextMapPropagator()
+	carrier := propagation.MapCarrier{}
+	for _, header := range msg.Headers {
+		carrier.Set(string(header.Key), string(header.Value))
+	}
+
+	// Создаем новый контекст с tracing информацией
+	ctx = propagator.Extract(ctx, carrier)
+
+	// Создаем span для обработки сообщения
+	ctx, span := c.tracer.Start(ctx, "kafkaConsumer.ReadFromGateway")
+
+	// Добавляем атрибуты
+	span.SetAttributes(
+		attribute.String("kafkaTopic", msg.Topic),
+		attribute.Int("kafkaPartition", msg.Partition),
+		attribute.Int64("kafkaOffset", msg.Offset),
+		attribute.String("paymentUUID", string(msg.Key)),
+	)
+
+	return ctx, span
 }

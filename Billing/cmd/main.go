@@ -6,12 +6,15 @@ import (
 	producer "billing/internal/broker/producer"
 	client "billing/internal/client/bankExampleClient"
 	"billing/internal/entity/paymentProcessor"
+	"billing/internal/tracer"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,6 +24,15 @@ func main() {
 
 	mainCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	jaegerEndpoint := "localhost:4317"
+	tp, err := tracer.InitTracer("Billing", jaegerEndpoint)
+	if err != nil {
+		slog.Error("failed to initialize tracer", "err", err.Error())
+		stop()
+	}
+	defer tracer.ShutdownTracer(context.Background(), tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	cfg := config.New()
 

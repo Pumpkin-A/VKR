@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -10,10 +11,14 @@ import (
 	models "transaction_service/internal/models"
 
 	_ "github.com/lib/pq"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type PostgresDB struct {
-	DB *sql.DB
+	DB     *sql.DB
+	tracer trace.Tracer
 }
 
 func New(cfg config.Config) *PostgresDB {
@@ -34,11 +39,16 @@ func New(cfg config.Config) *PostgresDB {
 
 	slog.Info("db connection success", "user", cfg.DB.DbUser, "dbname", cfg.DB.DbName)
 	return &PostgresDB{
-		DB: db,
+		DB:     db,
+		tracer: otel.Tracer("DB_transaction_service"),
 	}
 }
 
-func (db *PostgresDB) AddPayment(p models.Payment) error {
+func (db *PostgresDB) AddPayment(ctx context.Context, p models.Payment) (context.Context, error) {
+	ctx, sp := db.tracer.Start(ctx, "DB.AddPayment")
+	sp.SetAttributes(attribute.String("paymentId", p.UUID))
+	defer sp.End()
+
 	insertQuery := `insert into payment (uuid, status_id, paid, amount, currency_id, created_at, expired_at, description, 
 	paymnent_type_id, card_number, recepient_account_number, refundable, test, income)
 	values ($1, (SELECT id from status WHERE status.status=$2), $3, $4, (SELECT id from currency WHERE title=$5), 
@@ -47,13 +57,17 @@ func (db *PostgresDB) AddPayment(p models.Payment) error {
 		p.Description, p.PaymentMethod.Type, p.PaymentMethod.Card.Number, p.Recipient.AccountNumber, p.Refundable, p.Test, p.IncomeAmount.Value)
 	if err != nil {
 		slog.Error("error with adding payment", "err", err.Error())
-		return err
+		return ctx, err
 	}
 	slog.Info("payment was successfully added to DB", "uuid:", p.UUID)
-	return nil
+	return ctx, nil
 }
 
-func (db *PostgresDB) UpdatePaymentStatus(uuid, status string) error {
+func (db *PostgresDB) UpdatePaymentStatus(ctx context.Context, uuid, status string) error {
+	ctx, sp := db.tracer.Start(ctx, "UpdatePaymentStatus")
+	sp.SetAttributes(attribute.String("paymentId", uuid))
+	defer sp.End()
+
 	updateQuery := `UPDATE payment
 	SET status_id = (SELECT id from status WHERE status.status=$1)
 	WHERE uuid = $2;`
@@ -66,7 +80,11 @@ func (db *PostgresDB) UpdatePaymentStatus(uuid, status string) error {
 	return nil
 }
 
-func (db *PostgresDB) AddCardIfNotExist(c models.Card) error {
+func (db *PostgresDB) AddCardIfNotExist(ctx context.Context, c models.Card) (context.Context, error) {
+	ctx, sp := db.tracer.Start(ctx, "DB.AddCardIfNotExist")
+	// sp.SetAttributes(attribute.String("paymentId", uuid))
+	defer sp.End()
+
 	insertQuery := `insert into card (number, expiry_month, expiry_year, card_type, code, name, issuer_country, issuer_name_id)
 	select $1, $2, $3, $4, $5, $6, $7, (select id from issuer_name where issuer_name.issuer_name=$8)
 	where NOT EXISTS (SELECT number FROM card WHERE number = $9);`
@@ -74,13 +92,17 @@ func (db *PostgresDB) AddCardIfNotExist(c models.Card) error {
 		c.IssuerCountry, c.IssuerName, c.Number)
 	if err != nil {
 		slog.Error("error with adding card", "err", err.Error())
-		return err
+		return ctx, err
 	}
 	slog.Info("card was successfully added to DB", "card_number:", c.Number)
-	return nil
+	return ctx, nil
 }
 
-func (db *PostgresDB) GetPayment(uuid string) (models.Payment, error) {
+func (db *PostgresDB) GetPayment(ctx context.Context, uuid string) (models.Payment, error) {
+	ctx, sp := db.tracer.Start(ctx, "GetPayment")
+	sp.SetAttributes(attribute.String("paymentId", uuid))
+	defer sp.End()
+
 	selectQuery := `select p.uuid, s.status, p.paid, p.amount, cu.title, p.created_at, p.expired_at,
        p.description, pt.type, c.number, c.expiry_month, c.expiry_year, c.card_type,
        c.code, c.name, c.issuer_country, i.issuer_name,
@@ -114,7 +136,7 @@ func (db *PostgresDB) GetPayment(uuid string) (models.Payment, error) {
 	return p, nil
 }
 
-func (db *PostgresDB) GetPaymentStatus(uuid string) (models.PaymentStatus, error) {
+func (db *PostgresDB) GetPaymentStatus(ctx context.Context, uuid string) (models.PaymentStatus, error) {
 	selectQuery := `select s.status from payment as p
 	join status as s on p.status_id = s.id
 	where uuid = $1;`

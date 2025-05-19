@@ -6,14 +6,18 @@ import (
 	"log"
 	"log/slog"
 	models "transaction_service/internal/models"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DB interface {
-	AddPayment(models.Payment) error
-	GetPayment(uuid string) (models.Payment, error)
-	AddCardIfNotExist(c models.Card) error
-	UpdatePaymentStatus(uuid, status string) error
-	GetPaymentStatus(uuid string) (models.PaymentStatus, error)
+	AddPayment(ctx context.Context, p models.Payment) (context.Context, error)
+	GetPayment(ctx context.Context, uuid string) (models.Payment, error)
+	AddCardIfNotExist(ctx context.Context, c models.Card) (context.Context, error)
+	UpdatePaymentStatus(ctx context.Context, uuid, status string) error
+	GetPaymentStatus(ctx context.Context, uuid string) (models.PaymentStatus, error)
 }
 
 type Producer interface {
@@ -25,23 +29,29 @@ type Producer interface {
 type PaymentManager struct {
 	DB       DB
 	Producer Producer
+	tracer   trace.Tracer
 }
 
 func New(db DB, producer Producer) *PaymentManager {
 	return &PaymentManager{
 		DB:       db,
 		Producer: producer,
+		tracer:   otel.Tracer("payment_manager_transaction_service"),
 	}
 }
 
 func (pm *PaymentManager) CreatePayment(ctx context.Context, payment models.Payment) (string, error) {
+	ctx, sp := pm.tracer.Start(ctx, "paymentManager.CreatePayment")
+	sp.SetAttributes(attribute.String("paymentId", payment.UUID))
+	defer sp.End()
+
 	log.Printf("Добавление транзакции в бд, id: %s\n", payment.UUID)
-	err := pm.DB.AddCardIfNotExist(payment.PaymentMethod.Card)
+	ctx, err := pm.DB.AddCardIfNotExist(ctx, payment.PaymentMethod.Card)
 	fmt.Println(payment.PaymentMethod.Card.Number)
 	if err != nil {
 		return "", err
 	}
-	err = pm.DB.AddPayment(payment)
+	ctx, err = pm.DB.AddPayment(ctx, payment)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +64,11 @@ func (pm *PaymentManager) CreatePayment(ctx context.Context, payment models.Paym
 }
 
 func (pm *PaymentManager) MakeRefund(ctx context.Context, payment models.Payment) error {
-	curStatus, err := pm.DB.GetPaymentStatus(payment.UUID)
+	ctx, sp := pm.tracer.Start(ctx, "MakeRefund")
+	sp.SetAttributes(attribute.String("paymentId", payment.UUID))
+	defer sp.End()
+
+	curStatus, err := pm.DB.GetPaymentStatus(ctx, payment.UUID)
 	if err != nil {
 		slog.Error("error with get transaction status from db", "err", err.Error())
 		return err
@@ -76,7 +90,11 @@ func (pm *PaymentManager) MakeRefund(ctx context.Context, payment models.Payment
 }
 
 func (pm *PaymentManager) CancelPayment(ctx context.Context, payment models.Payment) error {
-	curStatus, err := pm.DB.GetPaymentStatus(payment.UUID)
+	ctx, sp := pm.tracer.Start(ctx, "CancelPayment")
+	sp.SetAttributes(attribute.String("paymentId", payment.UUID))
+	defer sp.End()
+
+	curStatus, err := pm.DB.GetPaymentStatus(ctx, payment.UUID)
 	if err != nil {
 		slog.Error("error with get transaction status from db", "err", err.Error())
 		return err
@@ -98,7 +116,7 @@ func (pm *PaymentManager) CancelPayment(ctx context.Context, payment models.Paym
 }
 
 func (pm *PaymentManager) setFinalTrsnsactionStatus(ctx context.Context, event models.EventExternalPaymentResult) error {
-	err := pm.DB.UpdatePaymentStatus(event.UUID, string(event.Status))
+	err := pm.DB.UpdatePaymentStatus(ctx, event.UUID, string(event.Status))
 	if err != nil {
 		return err
 	}
@@ -113,7 +131,7 @@ func (pm *PaymentManager) setFinalTrsnsactionStatus(ctx context.Context, event m
 }
 
 func (pm *PaymentManager) ResultProcessing(ctx context.Context, res models.PaymentResult) error {
-	curStatus, err := pm.DB.GetPaymentStatus(res.UUID)
+	curStatus, err := pm.DB.GetPaymentStatus(ctx, res.UUID)
 	if err != nil {
 		slog.Error("error with get transaction status from db", "err", err.Error())
 		return err
@@ -151,8 +169,12 @@ func (pm *PaymentManager) ResultProcessing(ctx context.Context, res models.Payme
 }
 
 func (pm *PaymentManager) GetPayment(ctx context.Context, uuid string) (models.Payment, error) {
+	ctx, sp := pm.tracer.Start(ctx, "GetPayment")
+	sp.SetAttributes(attribute.String("paymentId", uuid))
+	defer sp.End()
+
 	log.Printf("Получение транзакции из бд, id: %s\n", uuid)
-	payment, err := pm.DB.GetPayment(uuid)
+	payment, err := pm.DB.GetPayment(ctx, uuid)
 	if err != nil {
 		return models.Payment{}, err
 	}

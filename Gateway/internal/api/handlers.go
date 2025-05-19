@@ -11,6 +11,7 @@ import (
 	models "payment_gateway/internal/models"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func HandleHello(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +19,9 @@ func HandleHello(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleCreatePayment(w http.ResponseWriter, r *http.Request) {
+	ctx, sp := s.tracer.Start(context.Background(), "httpServer.HandleCreatePayment")
+	defer sp.End()
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -48,10 +52,12 @@ func (s *Server) HandleCreatePayment(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Body: No Body Supplied\n")
 	}
 
-	paymentUUID, err := s.PaymentManager.CreatePayment(context.Background(), paymentReq)
+	paymentUUID, err := s.PaymentManager.CreatePayment(ctx, paymentReq)
 	if err != nil {
 		log.Println("error with creating payment")
 	}
+
+	sp.SetAttributes(attribute.String("paymentId", paymentUUID))
 
 	w.Write([]byte(paymentUUID + "success"))
 }

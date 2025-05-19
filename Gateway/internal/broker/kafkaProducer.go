@@ -28,7 +28,7 @@ func New(cfg config.Config) *Producer {
 			Topic:    cfg.Kafka.Topic,
 			Balancer: &kafka.LeastBytes{},
 		},
-		tracer: otel.Tracer("kafka_gateway"),
+		tracer: otel.Tracer("kafka_producer_gateway"),
 		// propagator: otel.GetTextMapPropagator(),
 	}
 }
@@ -42,7 +42,7 @@ func (p *Producer) Close() error {
 }
 
 func (p *Producer) WriteExternalTransactionOperationEvent(ctx context.Context, payment models.ExternalTransactionOperationEvent) error {
-	ctx, span := p.tracer.Start(ctx, "KafkaProducer.WriteMessage")
+	ctx, span := p.tracer.Start(ctx, "kafkaProducer.WriteMessageToTransactionService")
 	defer span.End()
 
 	// Добавляем атрибуты для трассировки

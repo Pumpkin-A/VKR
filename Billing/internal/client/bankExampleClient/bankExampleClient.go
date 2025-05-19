@@ -4,16 +4,22 @@ import (
 	"billing/config"
 	"billing/internal/models"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
+	tracer     trace.Tracer
 }
 
 func New(cfg config.Config) *Client {
@@ -22,11 +28,16 @@ func New(cfg config.Config) *Client {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10, // Устанавливаем таймаут для запросов
 		},
+		tracer: otel.Tracer("BankClient_billing"),
 	}
 }
 
 // DoPayment - метод для отправки запроса на проведение платежа
-func (c *Client) DoPayment(payment models.Payment) (models.ResultOfRequestFromBank, error) {
+func (c *Client) DoPayment(ctx context.Context, payment models.Payment) (models.ResultOfRequestFromBank, error) {
+	_, sp := c.tracer.Start(ctx, "BankClient.DoPayment")
+	sp.SetAttributes(attribute.String("paymentId", payment.UUID))
+	defer sp.End()
+
 	requestBody, err := json.Marshal(payment)
 	if err != nil {
 		return models.ResultOfRequestFromBank{}, fmt.Errorf("failed to marshal payment: %w", err)

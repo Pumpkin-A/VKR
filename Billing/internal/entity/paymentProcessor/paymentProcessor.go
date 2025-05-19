@@ -5,10 +5,14 @@ import (
 	"context"
 	"log/slog"
 	"math/rand/v2"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Client interface {
-	DoPayment(payment models.Payment) (models.ResultOfRequestFromBank, error)
+	DoPayment(ctx context.Context, payment models.Payment) (models.ResultOfRequestFromBank, error)
 }
 
 type Producer interface {
@@ -19,17 +23,23 @@ type Producer interface {
 type PaymentProcessor struct {
 	client   Client
 	producer Producer
+	tracer   trace.Tracer
 }
 
 func New(c Client, producer Producer) *PaymentProcessor {
 	return &PaymentProcessor{
 		client:   c,
 		producer: producer,
+		tracer:   otel.Tracer("paymentProcessor_billing"),
 	}
 }
 
 func (pm *PaymentProcessor) DoPayment(ctx context.Context, payment models.Payment) (string, error) {
-	result, err := pm.client.DoPayment(payment)
+	ctx, sp := pm.tracer.Start(ctx, "paymentProcessor.DoPayment")
+	sp.SetAttributes(attribute.String("paymentId", payment.UUID))
+	defer sp.End()
+
+	result, err := pm.client.DoPayment(ctx, payment)
 	if err != nil {
 		slog.Error("error with http request to bank_example", "err", err)
 		return "", err
