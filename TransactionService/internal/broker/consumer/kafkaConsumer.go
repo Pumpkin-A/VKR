@@ -10,6 +10,11 @@ import (
 	"transaction_service/internal/models"
 
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type PaymentManager interface {
@@ -23,6 +28,7 @@ type Consumer struct {
 	gatewayReader *kafka.Reader
 	billingReader *kafka.Reader
 	pm            PaymentManager
+	tracer        trace.Tracer
 }
 
 func NewConsumer(ctx context.Context, cfg config.Config, pm PaymentManager) (*Consumer, error) {
@@ -39,7 +45,8 @@ func NewConsumer(ctx context.Context, cfg config.Config, pm PaymentManager) (*Co
 			Topic:                 cfg.Kafka.TopicInternalPaymentResult,
 			WatchPartitionChanges: true,
 		}),
-		pm: pm,
+		pm:     pm,
+		tracer: otel.Tracer("kafka_transaction_service"),
 	}
 
 	return consumer, nil
@@ -60,50 +67,80 @@ func (c *Consumer) Close() error {
 
 func (c *Consumer) ReadFromGateway(ctx context.Context) {
 	for {
-		msg, err := c.gatewayReader.FetchMessage(ctx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				slog.Info("[gatewayReader] Consumer context canceled. Exiting...")
+		func() {
+			msg, err := c.gatewayReader.FetchMessage(ctx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					slog.Info("[gatewayReader] Consumer context canceled. Exiting...")
+					return
+				}
+				slog.Error("[gatewayReader] could not fetch message", "func", "Consumer: Run", "err", err.Error())
 				return
 			}
-			slog.Error("[gatewayReader] could not fetch message", "func", "Consumer: Run", "err", err.Error())
-			return
-		}
 
-		var event models.EventExternalTransactionOperation
-		err = json.Unmarshal(msg.Value, &event)
-		if err != nil {
-			slog.Error("[gatewayReader] error with unmarshal msg:", "err", err.Error())
-		}
+			// Экстрактим tracing контекст из заголовков
+			propagator := otel.GetTextMapPropagator()
+			carrier := propagation.MapCarrier{}
+			for _, header := range msg.Headers {
+				carrier.Set(string(header.Key), string(header.Value))
+			}
 
-		slog.Info("[gatewayReader] msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", event.UUID)
+			// Создаем новый контекст с tracing информацией
+			ctx = propagator.Extract(ctx, carrier)
 
-		payment := event.ConvertToPayment()
-		switch event.TransactionOperation {
-		case models.CreateTransactionOperation:
-			_, err = c.pm.CreatePayment(ctx, payment)
+			// Создаем span для обработки сообщения
+			ctx, span := c.tracer.Start(ctx, "KafkaConsumer.ReadFromGateway")
+			defer span.End()
+
+			// Добавляем атрибуты
+			span.SetAttributes(
+				attribute.String("kafkaTopic", msg.Topic),
+				attribute.Int("kafkaPartition", msg.Partition),
+				attribute.Int64("kafkaOffset", msg.Offset),
+				attribute.String("paymentUUID", string(msg.Key)),
+			)
+
+			var event models.EventExternalTransactionOperation
+			err = json.Unmarshal(msg.Value, &event)
 			if err != nil {
-				slog.Error("[gatewayReader] error with createPayment:", "err", err.Error())
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to unmarshal message")
+				slog.Error("[gatewayReader] error with unmarshal msg:", "err", err.Error())
 			}
-		case models.RefundTransactionOperation:
-			err = c.pm.MakeRefund(ctx, payment)
+
+			slog.Info("[gatewayReader] msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", event.UUID)
+
+			payment := event.ConvertToPayment()
+			switch event.TransactionOperation {
+			case models.CreateTransactionOperation:
+				_, err = c.pm.CreatePayment(ctx, payment)
+				if err != nil {
+					slog.Error("[gatewayReader] error with createPayment:", "err", err.Error())
+				}
+			case models.RefundTransactionOperation:
+				err = c.pm.MakeRefund(ctx, payment)
+				if err != nil {
+					slog.Error("[gatewayReader] error with make refund:", "err", err.Error())
+				}
+			case models.CancelTransactionOperation:
+				err = c.pm.CancelPayment(ctx, payment)
+				if err != nil {
+					slog.Error("[gatewayReader] error with make cancel:", "err", err.Error())
+				}
+			default:
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+				slog.Error("[gatewayReader] unknown transaction operation", "payment uuid:", payment.UUID, "err", err.Error())
+				return
+			}
+			err = c.gatewayReader.CommitMessages(ctx, msg)
 			if err != nil {
-				slog.Error("[gatewayReader] error with make refund:", "err", err.Error())
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+				slog.Error("[gatewayReader] error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
+				return
 			}
-		case models.CancelTransactionOperation:
-			err = c.pm.CancelPayment(ctx, payment)
-			if err != nil {
-				slog.Error("[gatewayReader] error with make cancel:", "err", err.Error())
-			}
-		default:
-			slog.Error("[gatewayReader] unknown transaction operation", "payment uuid:", payment.UUID, "err", err.Error())
-			return
-		}
-		err = c.gatewayReader.CommitMessages(context.Background(), msg)
-		if err != nil {
-			slog.Error("[gatewayReader] error with kafka committing msg", "func", "Consumer: Run", "payment uuid:", payment.UUID, "err", err.Error())
-			return
-		}
+		}()
 	}
 }
 

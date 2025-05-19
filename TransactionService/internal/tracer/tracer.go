@@ -64,7 +64,7 @@ func InitTracer(serviceName, otlpEndpoint string) (*trace.TracerProvider, error)
 
 	// Создаём TracerProvider.
 	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
+		trace.WithBatcher(exp, trace.WithBatchTimeout(5*time.Second)),
 		trace.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
