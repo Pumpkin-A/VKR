@@ -8,10 +8,12 @@ import (
 	"payment_gateway/internal/models"
 
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Producer struct {
 	Writer *kafka.Writer
+	tracer trace.Tracer
 }
 
 func New(cfg config.Config) *Producer {

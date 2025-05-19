@@ -10,8 +10,11 @@ import (
 	"payment_gateway/internal/broker"
 	paymentmanager "payment_gateway/internal/entity/paymentManager"
 	"payment_gateway/internal/grpcClient"
+	"payment_gateway/internal/tracer"
 	"syscall"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,6 +24,15 @@ func main() {
 
 	mainCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	jaegerEndpoint := "localhost:4317"
+	tp, err := tracer.InitTracer("Gateway", jaegerEndpoint)
+	if err != nil {
+		slog.Error("failed to initialize tracer", "err", err.Error())
+		stop()
+	}
+	defer tracer.ShutdownTracer(context.Background(), tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	cfg := config.New()
 
@@ -33,7 +45,7 @@ func main() {
 		}
 	}()
 
-	grpcClient, err := grpcClient.NewPaymentClient(cfg)
+	grpcClient, err := grpcClient.NewPaymentClient(mainCtx, cfg)
 	if err != nil {
 		slog.Error("error with grpc client creating")
 		stop()

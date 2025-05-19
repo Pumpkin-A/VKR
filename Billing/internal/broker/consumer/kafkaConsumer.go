@@ -65,34 +65,35 @@ func (c *Consumer) Run(ctx context.Context) {
 		}
 
 		slog.Info("msg was fetch from kafka", "partition: ", msg.Partition, "offset: ", msg.Offset, "payment uuid: ", event.UUID)
-
 		payment := event.ConvertToPayment()
-		switch event.TransactionOperation {
-		case models.CreateTransactionOperation:
-			_, err := c.pp.DoPayment(ctx, payment)
-			if err != nil {
-				slog.Error("error with payment processing", "method", "doPayment", "err", err)
+		go func() {
+			switch event.TransactionOperation {
+			case models.CreateTransactionOperation:
+				_, err := c.pp.DoPayment(ctx, payment)
+				if err != nil {
+					slog.Error("error with payment processing", "method", "doPayment", "err", err)
+					return
+				}
+				slog.Info("correct payment processing", "method", "doPayment", "uuid", payment.UUID)
+			case models.RefundTransactionOperation:
+				_, err := c.pp.DoRefund(ctx, payment)
+				if err != nil {
+					slog.Error("error with payment processing", "method", "doRefund", "err", err)
+					return
+				}
+				slog.Info("correct payment processing", "method", "doRefund", "uuid", payment.UUID)
+			case models.CancelTransactionOperation:
+				_, err := c.pp.CancelPayment(ctx, payment)
+				if err != nil {
+					slog.Error("error with payment processing", "method", "doRefund", "err", err)
+					return
+				}
+				slog.Info("correct payment processing", "method", "CancelPayment", "uuid", payment.UUID)
+			default:
+				slog.Error("unknown transaction operation")
 				return
 			}
-			slog.Info("correct payment processing", "method", "doPayment", "uuid", payment.UUID)
-		case models.RefundTransactionOperation:
-			_, err := c.pp.DoRefund(ctx, payment)
-			if err != nil {
-				slog.Error("error with payment processing", "method", "doRefund", "err", err)
-				return
-			}
-			slog.Info("correct payment processing", "method", "doRefund", "uuid", payment.UUID)
-		case models.CancelTransactionOperation:
-			_, err := c.pp.CancelPayment(ctx, payment)
-			if err != nil {
-				slog.Error("error with payment processing", "method", "doRefund", "err", err)
-				return
-			}
-			slog.Info("correct payment processing", "method", "CancelPayment", "uuid", payment.UUID)
-		default:
-			slog.Error("unknown transaction operation")
-			return
-		}
+		}()
 
 		err = c.reader.CommitMessages(context.Background(), msg)
 		if err != nil {

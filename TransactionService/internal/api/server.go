@@ -9,6 +9,11 @@ import (
 	"transaction_service/internal/models"
 	pb "transaction_service/pkg/pb/github.com/yourproject/pkg/pb/transaction/v1"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
@@ -20,12 +25,14 @@ type Server struct {
 	pb.UnimplementedPaymentServiceServer
 	rpcServer *grpc.Server
 	pm        PaymentManager
+	tr        trace.Tracer
 }
 
 func New(pm PaymentManager) *Server {
 	s := &Server{
-		rpcServer: grpc.NewServer(),
+		rpcServer: grpc.NewServer(grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor())),
 		pm:        pm,
+		tr:        otel.Tracer("grpc-server"),
 	}
 	pb.RegisterPaymentServiceServer(s.rpcServer, s)
 	return s
@@ -46,6 +53,10 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) GetPayment(ctx context.Context, req *pb.PaymentRequest) (*pb.PaymentResponse, error) {
+	ctx, sp := s.tr.Start(ctx, "Server GetPayment")
+	sp.SetAttributes(attribute.String("paymentId", req.GetPaymentId()))
+	defer sp.End()
+
 	transactionID := req.GetPaymentId()
 	log.Printf("Received request for transaction ID: %s", transactionID)
 
